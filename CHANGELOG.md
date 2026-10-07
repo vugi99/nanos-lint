@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Configured Dependabot version update pull requests for npm and GitHub Actions to target `dev`.
+- Updated TypeScript ESLint packages from 8.70.1 to 8.71.0 via Dependabot (#63, #64); the standalone parser update (#65) was superseded by #64.
+- Updated dependency-cruiser from 18.4.0 to 18.5.0 and ESLint from 10.11.0 to 10.12.0 via Dependabot (#66, #67).
 
 ## [3.3.0] - 2026-10-02
 
