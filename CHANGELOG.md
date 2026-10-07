@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `--offline` for local-only LuaLS and annotation resolution across commands, preserving stale caches and explicit version constraints (#61).
+
 ### Changed
 
 - Configured Dependabot version update pull requests for npm and GitHub Actions to target `dev`.

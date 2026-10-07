@@ -33,6 +33,7 @@ export interface CheckOptions {
   checklevel?: DiagnosticSeverity;
   configpath?: string;
   lualsVersion?: string;
+  offline?: boolean;
   format?: "pretty" | "json" | "github";
   failOnError?: boolean;
   lualsBin?: string;

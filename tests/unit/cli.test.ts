@@ -312,15 +312,15 @@ describe("cli module flag and command parsing", () => {
 
       const codeDefault = await runCLI(["download-luals"]);
       expect(codeDefault).toBe(0);
-      expect(lualsSpy).toHaveBeenCalledWith("latest");
+      expect(lualsSpy).toHaveBeenCalledWith("latest", { offline: undefined });
 
       const codePositional = await runCLI(["download-luals", "3.13.5"]);
       expect(codePositional).toBe(0);
-      expect(lualsSpy).toHaveBeenCalledWith("3.13.5");
+      expect(lualsSpy).toHaveBeenCalledWith("3.13.5", { offline: undefined });
 
       const codeFlag = await runCLI(["download-luals", "--luals-version", "3.13.4"]);
       expect(codeFlag).toBe(0);
-      expect(lualsSpy).toHaveBeenCalledWith("3.13.4");
+      expect(lualsSpy).toHaveBeenCalledWith("3.13.4", { offline: undefined });
 
       lualsSpy.mockRestore();
       logSpy.mockRestore();
@@ -342,8 +342,8 @@ describe("cli module flag and command parsing", () => {
 
       const codeDefault = await runCLI(["warmup"]);
       expect(codeDefault).toBe(0);
-      expect(lualsSpy).toHaveBeenCalledWith("latest");
-      expect(annotSpy).toHaveBeenCalledWith({ customPath: undefined });
+      expect(lualsSpy).toHaveBeenCalledWith("latest", { offline: undefined });
+      expect(annotSpy).toHaveBeenCalledWith({ customPath: undefined, offline: undefined });
       expect(logSpy).toHaveBeenCalledWith(
         expect.stringContaining("[warmup] LuaLS binary ready: /mock/bin/luals"),
       );
@@ -369,8 +369,11 @@ describe("cli module flag and command parsing", () => {
         "error",
       ]);
       expect(codeDownload).toBe(0);
-      expect(lualsSpy).toHaveBeenCalledWith("3.19.0");
-      expect(annotSpy).toHaveBeenCalledWith({ customPath: "/custom/annotations.lua" });
+      expect(lualsSpy).toHaveBeenCalledWith("3.19.0", { offline: undefined });
+      expect(annotSpy).toHaveBeenCalledWith({
+        customPath: "/custom/annotations.lua",
+        offline: undefined,
+      });
 
       lualsSpy.mockRestore();
       annotSpy.mockRestore();

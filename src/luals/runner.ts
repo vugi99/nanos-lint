@@ -32,6 +32,7 @@ import {
   rethrowLuaLSPermissionError,
 } from "./validation.js";
 import { downloadAndExtractLuaLS } from "./download.js";
+import { resolveOfflineLuaLS, validateOfflineBinary } from "./offline.js";
 import { countCheckedFiles } from "./files.js";
 
 export { countCheckedFiles } from "./files.js";
@@ -50,6 +51,7 @@ export interface ResolveLuaLSOptions {
   cacheDir?: string;
   /** Set to `false` to always fetch the archive instead of reusing an installed copy. */
   reuseExisting?: boolean;
+  offline?: boolean;
 }
 
 /** Resolves the executable path of a LuaLS binary from env, bundle, cache, or network download. */
@@ -57,6 +59,8 @@ export async function resolveLuaLSBinary(
   version: string = DEFAULT_LUALS_VERSION,
   options?: ResolveLuaLSOptions,
 ): Promise<string> {
+  if (options?.offline) return resolveOfflineLuaLS(version, options.cacheDir);
+
   // 1. Environment variable override
   if (process.env.LUALS_BIN) {
     return assertValidLuaLSBinary(process.env.LUALS_BIN, "LUALS_BIN");
@@ -325,8 +329,10 @@ export async function runLuaLSCheck(
   }
 
   const binary = options.lualsBin
-    ? assertValidLuaLSBinary(options.lualsBin, "--luals-bin")
-    : await resolveLuaLSBinary(options.lualsVersion);
+    ? options.offline
+      ? validateOfflineBinary(options.lualsBin, options.lualsVersion ?? "latest")
+      : assertValidLuaLSBinary(options.lualsBin, "--luals-bin")
+    : await resolveLuaLSBinary(options.lualsVersion, { offline: options.offline });
 
   let checkDir = absoluteTarget;
   let targetFileOnly: string | null = null;

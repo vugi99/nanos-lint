@@ -420,3 +420,19 @@ See [AGENTS.md](AGENTS.md) for development philosophy and quality gate requireme
 ## License
 
 [MIT](LICENSE)
+
+Offline execution uses only local dependencies and skips all nanos-lint network requests:
+
+```sh
+nanos-lint warmup                         # provision online
+nanos-lint check Packages/events --offline
+npx --offline nanos-lint check Packages/events --offline
+```
+
+For `latest`, offline mode selects the highest usable cached version (numeric tag order)
+and reports it, then tries a bundled binary or PATH. `LUALS_BIN` overrides discovery.
+Pinned versions require a matching cache or local executable. Custom annotations
+(`--annotations` or `NANOS_ANNOTATIONS_PATH`), bundled annotations, and valid stale
+cached annotations work offline. Missing assets fail with provisioning instructions.
+The flag controls nanos-lint; npm/npx may access the registry before it starts. Use
+a preinstalled executable or npm's own `--offline` with an already cached package.

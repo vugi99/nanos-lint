@@ -23,6 +23,7 @@ export interface CheckCommandOptions {
   logLevel?: string;
   progress?: boolean;
   github?: boolean;
+  offline?: boolean;
   ignore?: string[];
   dep?: string[];
   realm?: RealmSelection;
@@ -51,6 +52,7 @@ export async function executeCheckCommand(
   }
 
   const checkOptions: CheckOptions = {
+    offline: opts.offline,
     path: rootPath,
     paths: canonicalTargets,
     configpath: opts.config,
@@ -75,6 +77,7 @@ export async function executeCheckCommand(
 
   const annotationsPath = await resolveAnnotations({
     customPath: opts.annotations,
+    offline: opts.offline,
   });
 
   const userConfig = loadUserConfig(rootPath, checkOptions.configpath);
