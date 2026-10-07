@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-07
+
 ### Added
 
 - Added regression coverage for offline bundled annotations with an empty cache and the built CLI running `check` / `warmup --offline` from release-bundle assets without populating the cache (PR #69 review).
