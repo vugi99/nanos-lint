@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveLuaLSBinary, runLuaLSCheck } from "../../src/luals.js";
 import { resolveAnnotations } from "../../src/annotations.js";
+import * as configModule from "../../src/config.js";
+import { MIN_ANNOTATIONS_SIZE_BYTES, isAnnotationsValid } from "../../src/annotations.js";
 import { runCLI } from "../../src/cli.js";
 import { isLiveTestsEnabled, seedCachedLuaLS, getSharedAnnotations } from "../helpers/live.js";
 
@@ -18,6 +20,29 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   for (const dir of temporary.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+describe("offline bundled annotations", () => {
+  it("uses valid bundled annotations with an empty cache and no network requests", async () => {
+    const packageRoot = temp();
+    const cacheDir = temp();
+    const bundled = path.join(packageRoot, "annotations.lua");
+    fs.writeFileSync(
+      bundled,
+      "---@meta\n" + "-- bundled definitions\n".repeat(MIN_ANNOTATIONS_SIZE_BYTES),
+    );
+    vi.spyOn(configModule, "getPackageRoot").mockReturnValue(packageRoot);
+    vi.stubEnv("NANOS_ANNOTATIONS_PATH", "");
+    vi.stubEnv("NANOS_ANNOTATIONS", "");
+    const fetch = vi.fn(() => {
+      throw new Error("Unexpected network request");
+    });
+    vi.stubGlobal("fetch", fetch);
+    expect(isAnnotationsValid(bundled)).toBe(true);
+    expect(await resolveAnnotations({ cacheDir, offline: true })).toBe(bundled);
+    expect(fs.readdirSync(cacheDir)).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("offline dependency failures", () => {
@@ -50,6 +75,25 @@ describe("offline dependency failures", () => {
 });
 
 describe.skipIf(!isLiveTestsEnabled())("offline with local LuaLS", () => {
+  it("runs warmup offline with bundled annotations and a local binary", async () => {
+    const binary = await seedCachedLuaLS(temp(), "3.19.1");
+    const annotations = await getSharedAnnotations();
+    const packageRoot = temp();
+    const bundled = path.join(packageRoot, "annotations.lua");
+    fs.copyFileSync(annotations, bundled);
+    vi.spyOn(configModule, "getPackageRoot").mockReturnValue(packageRoot);
+    vi.stubEnv("LUALS_BIN", binary);
+    vi.stubEnv("NANOS_ANNOTATIONS_PATH", "");
+    vi.stubEnv("NANOS_ANNOTATIONS", "");
+    const fetch = vi.fn(() => {
+      throw new Error("Unexpected network request");
+    });
+    vi.stubGlobal("fetch", fetch);
+    const output = vi.spyOn(console, "log").mockImplementation(() => {});
+    expect(await runCLI(["warmup", "--offline"])).toBe(0);
+    expect(output.mock.calls.flat().join("\n")).toContain(bundled);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("uses stale assets, chooses deterministically, preserves metadata and executes diagnostics", async () => {
     const cacheDir = temp();
     const binary = await seedCachedLuaLS(cacheDir, "3.19.1");
