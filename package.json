@@ -1,6 +1,6 @@
 {
   "name": "nanos-lint",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "Linter and type-checker for nanos world Lua scripts powered by LuaLS",
   "keywords": [
     "nanos-world",

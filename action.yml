@@ -199,5 +199,5 @@ runs:
         else
           # Exact version: a range could run a different release than the pinned
           # tag. Bump together with "version" in package.json.
-          npx --yes nanos-lint@3.4.0 "${ARGS[@]}"
+          npx --yes nanos-lint@3.4.1 "${ARGS[@]}"
         fi

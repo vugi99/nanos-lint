@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-10-07
+
+### Changed
+
+- Updated development dependency `@types/node` from 26.6.3 to 26.6.4 via Dependabot (#70).
+
+### Security
+
+- Updated `source-map-js` from 1.2.1 to 1.2.2 via Dependabot (#71), fixing high-severity CVE-2026-93749 (GHSA-68fv-2mgg-jv7q), an event-loop denial of service caused by crafted indexed source-map section offsets.
+
 ## [3.4.0] - 2026-10-07
 
 ### Added
