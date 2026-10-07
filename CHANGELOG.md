@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added regression coverage for offline bundled annotations with an empty cache and the built CLI running `check` / `warmup --offline` from release-bundle assets without populating the cache (PR #69 review).
+
+- Added diagnostic baseline recording and comparison, strict stale-entry checks, JSON classifications, and GitHub Action baseline inputs (#68).
+
+- Added `init --template` / `-t` to scaffold from custom JSONC settings, preserving realm mappings and library entries with vendoring (#62).
+
+- Added `--offline` for local-only LuaLS and annotation resolution across commands, preserving stale caches and explicit version constraints (#61).
+
+### Changed
+
+- Moved offline, custom init template, and diagnostic baseline guidance into their relevant README sections, listed `--offline` in the CLI reference, and aligned option descriptions (PR #69 review).
+
+- Configured Dependabot version update pull requests for npm and GitHub Actions to target `dev`.
+- Updated TypeScript ESLint packages from 8.70.1 to 8.71.0 via Dependabot (#63, #64); the standalone parser update (#65) was superseded by #64.
+- Updated dependency-cruiser from 18.4.0 to 18.5.0 and ESLint from 10.11.0 to 10.12.0 via Dependabot (#66, #67).
+
 ## [3.3.0] - 2026-10-02
 
 ### Added

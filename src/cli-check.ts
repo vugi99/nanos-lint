@@ -5,6 +5,7 @@ import { planRealmCheck, runRealmAwareCheck, type RealmSelection } from "./realm
 import { resolvePackageDependencies } from "./deps.js";
 import { resolveAnnotations } from "./annotations.js";
 import { runLuaLSCheck } from "./luals.js";
+import { readBaseline, writeBaseline, compareBaseline, createBaseline } from "./baseline.js";
 import { formatReport } from "./reporter.js";
 import { logger, LogLevel, isValidLogLevel } from "./logger.js";
 import { writeOutput } from "./output.js";
@@ -23,6 +24,10 @@ export interface CheckCommandOptions {
   logLevel?: string;
   progress?: boolean;
   github?: boolean;
+  offline?: boolean;
+  baseline?: string;
+  writeBaseline?: string;
+  baselineStrict?: boolean;
   ignore?: string[];
   dep?: string[];
   realm?: RealmSelection;
@@ -50,7 +55,16 @@ export async function executeCheckCommand(
     logger.setDiagnosticStream("stderr");
   }
 
+  if ((opts.baseline && opts.writeBaseline) || (opts.baselineStrict && !opts.baseline)) {
+    throw new ConfigError(
+      "Use either --baseline or --write-baseline; --baseline-strict requires --baseline.",
+      "ERR_BASELINE_OPTIONS",
+    );
+  }
+  const baseline = opts.baseline ? readBaseline(path.resolve(opts.baseline)) : undefined;
+
   const checkOptions: CheckOptions = {
+    offline: opts.offline,
     path: rootPath,
     paths: canonicalTargets,
     configpath: opts.config,
@@ -75,6 +89,7 @@ export async function executeCheckCommand(
 
   const annotationsPath = await resolveAnnotations({
     customPath: opts.annotations,
+    offline: opts.offline,
   });
 
   const userConfig = loadUserConfig(rootPath, checkOptions.configpath);
@@ -118,6 +133,13 @@ export async function executeCheckCommand(
         }
       }
     }
+  }
+
+  if (opts.writeBaseline) {
+    writeBaseline(opts.writeBaseline, result, rootPath);
+    result = compareBaseline(result, createBaseline(result, rootPath), rootPath);
+  } else if (baseline) {
+    result = compareBaseline(result, baseline, rootPath, opts.baselineStrict);
   }
 
   const output = formatReport(result, checkOptions.format, process.cwd());

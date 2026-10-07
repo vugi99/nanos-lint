@@ -19,6 +19,7 @@ export * from "./annotations-download.js";
 export interface ResolveAnnotationsOptions {
   customPath?: string;
   cacheDir?: string;
+  offline?: boolean;
 }
 
 /** Validates that a user-supplied or environment-specified annotations path exists and is a valid file. */
@@ -112,6 +113,14 @@ export async function resolveAnnotations(options: ResolveAnnotationsOptions = {}
 
   const cacheDir = options.cacheDir ?? getAnnotationsCacheDir();
   const cachedAnnotationsFile = path.join(cacheDir, ANNOTATIONS_FILENAME);
+  if (options.offline) {
+    if (isAnnotationsValid(cachedAnnotationsFile)) return cachedAnnotationsFile;
+    throw new AnnotationsError(
+      `Offline: no usable local annotations.lua at ${cachedAnnotationsFile}.`,
+      "ERR_ANNOTATIONS_OFFLINE",
+      "Run 'nanos-lint warmup' online or specify --annotations <path>.",
+    );
+  }
   const metadata = readAnnotationsMetadata(cacheDir);
   const { dateStr } = getTodayDateString();
 
@@ -207,6 +216,7 @@ export interface CopyAnnotationsOptions {
   force?: boolean;
   annotationsPath?: string;
   cacheDir?: string;
+  offline?: boolean;
 }
 
 const DEFAULT_COPY_TARGET = `.nanos-lint/${ANNOTATIONS_FILENAME}`;
@@ -240,7 +250,7 @@ export async function copyAnnotations(
 
   const sourcePath = options.annotationsPath
     ? validateCustomAnnotationsPath(options.annotationsPath, "custom")
-    : await resolveAnnotations({ cacheDir: options.cacheDir });
+    : await resolveAnnotations({ cacheDir: options.cacheDir, offline: options.offline });
 
   const targetDir = path.dirname(resolvedTarget);
   fs.mkdirSync(targetDir, { recursive: true });

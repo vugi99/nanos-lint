@@ -54,6 +54,7 @@ export function createProgram(options?: CreateProgramOptions): Command {
         .choices(["error", "warn", "info", "debug", "silent"])
         .default(DEFAULT_LOG_LEVEL),
     )
+    .option("--offline", "Use local dependencies only; never access the network")
     .option(
       "--no-progress",
       "Disable the interactive download, extraction and realm derivation progress display",
@@ -111,6 +112,12 @@ export function createProgram(options?: CreateProgramOptions): Command {
       `Version of LuaLS to use (default: ${DEFAULT_LUALS_VERSION})`,
       DEFAULT_LUALS_VERSION,
     )
+    .option("--baseline <path>", "Report and fail only on diagnostics absent from a saved baseline")
+    .option(
+      "--write-baseline <path>",
+      "Record current diagnostics as a baseline and exit successfully",
+    )
+    .option("--baseline-strict", "Also fail on stale baseline entries (requires --baseline)")
     .option("--no-fail", "Do not exit with code 1 if diagnostics are found")
     .addOption(
       new Option(
@@ -127,13 +134,15 @@ export function createProgram(options?: CreateProgramOptions): Command {
         .choices(["all", "client", "server", "shared"])
         .default("all"),
     )
-    .action(async (targetPaths: string[] = ["."], opts: CheckCommandOptions) => {
+    .action(async (targetPaths: string[] = ["."], opts: CheckCommandOptions, cmd: Command) => {
+      opts.offline = cmd.optsWithGlobals().offline;
       await executeCheckCommand(targetPaths, opts, setExitCode);
     });
 
   program
     .command("init [path]")
     .description("Scaffold a .luarc.json configuration in the workspace")
+    .option("-t, --template <path>", "Custom JSONC .luarc.json scaffold template")
     .option("-f, --force", "Overwrite existing .luarc.json configuration")
     .option(
       "--vendor",
@@ -147,18 +156,23 @@ export function createProgram(options?: CreateProgramOptions): Command {
           force?: boolean;
           annotations?: string;
           vendor?: boolean;
+          template?: string;
+          offline?: boolean;
         },
+        cmd: Command,
       ) => {
+        opts.offline = cmd.optsWithGlobals().offline;
         const shouldVendor = Boolean(opts.vendor);
         // Without --vendor the path is passed through on purpose: initWorkspace rejects the
         // combination instead of silently generating a configuration that ignores the file.
         const annotationsPath = shouldVendor
-          ? await resolveAnnotations({ customPath: opts.annotations })
+          ? await resolveAnnotations({ customPath: opts.annotations, offline: opts.offline })
           : opts.annotations;
         const created = initWorkspace(path.resolve(targetPath), {
           force: opts.force,
           annotationsPath,
           vendor: shouldVendor,
+          templatePath: opts.template,
         });
         writeOutput(`[init] Initialized nanos world LuaLS configuration: ${created}`);
         setExitCode(0);
@@ -174,10 +188,15 @@ export function createProgram(options?: CreateProgramOptions): Command {
     .option("-f, --force", "Overwrite existing annotations file")
     .option("--annotations <path>", "Path to custom annotations.lua source file")
     .action(
-      async (destination: string | undefined, opts: { force?: boolean; annotations?: string }) => {
+      async (
+        destination: string | undefined,
+        opts: { force?: boolean; annotations?: string },
+        cmd: Command,
+      ) => {
         const copied = await copyAnnotations(destination, {
           force: opts.force,
           annotationsPath: opts.annotations,
+          offline: cmd.optsWithGlobals().offline,
         });
         writeOutput(`[copy-annotations] Copied nanos world annotations to: ${copied}`);
         setExitCode(0);
@@ -190,13 +209,14 @@ export function createProgram(options?: CreateProgramOptions): Command {
     .description("Pre-fetch and cache both LuaLS binary and annotations for offline execution")
     .option("--luals-version <ver>", `Version of LuaLS to use (default: ${DEFAULT_LUALS_VERSION})`)
     .option("--annotations <path>", "Path to custom annotations.lua file")
-    .action(async (opts?: { lualsVersion?: string; annotations?: string }) => {
+    .action(async (opts: { lualsVersion?: string; annotations?: string }, cmd: Command) => {
       const ver = opts?.lualsVersion || DEFAULT_LUALS_VERSION;
-      const bin = await resolveLuaLSBinary(ver);
+      const bin = await resolveLuaLSBinary(ver, { offline: cmd.optsWithGlobals().offline });
       writeOutput(`[warmup] LuaLS binary ready: ${bin}`);
 
       const annotationsPath = await resolveAnnotations({
         customPath: opts?.annotations,
+        offline: cmd.optsWithGlobals().offline,
       });
       const meta = readAnnotationsMetadata();
       const commitInfo =
@@ -212,10 +232,10 @@ export function createProgram(options?: CreateProgramOptions): Command {
     .command("download-luals [version]")
     .description("Download and cache the LuaLS binary")
     .option("--luals-version <ver>", `Version of LuaLS to use (default: ${DEFAULT_LUALS_VERSION})`)
-    .action(async (version?: string, opts?: { lualsVersion?: string }) => {
+    .action(async (version: string | undefined, opts: { lualsVersion?: string }, cmd: Command) => {
       const ver = version || opts?.lualsVersion || DEFAULT_LUALS_VERSION;
       writeOutput(`[luals] Downloading LuaLS ${ver}...`);
-      const bin = await resolveLuaLSBinary(ver);
+      const bin = await resolveLuaLSBinary(ver, { offline: cmd.optsWithGlobals().offline });
       writeOutput(`[luals] Ready at: ${bin}`);
       setExitCode(0);
     });
