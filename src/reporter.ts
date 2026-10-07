@@ -119,7 +119,7 @@ export function formatPretty(
   const symCross = "✖  ";
   const symCheck = "✔  ";
 
-  if (result.passed) {
+  if (result.passed && !result.baselineSummary) {
     const files = result.totalFilesChecked ?? result.totalFiles;
     const fileStr = pluralize(files, "file");
     return `${c.green}${c.bold}${symCheck}Diagnosis completed, no problems found across ${fileStr}.${c.reset}`;
@@ -147,6 +147,7 @@ export function formatPretty(
     }
 
     for (const d of diags) {
+      if (d.baseline) continue;
       const line = d.range.start.line + 1;
       const col = d.range.start.character + 1;
       const badge = formatSeverityBadge(d.severity, useColor);
@@ -186,8 +187,12 @@ export function formatPretty(
   }
 
   lines.push("");
-  const summary = formatProblemSummary(result.totalProblems, errors, warnings, result.totalFiles);
-  lines.push(`${c.red}${c.bold}${symCross}${summary}${c.reset}`);
+  const counts = result.baselineSummary;
+  const summary = counts
+    ? `Diagnosis complete: ${counts.new} new, ${counts.baselined} baselined, ${counts.total} total (${counts.stale} stale baseline entries).`
+    : formatProblemSummary(result.totalProblems, errors, warnings, result.totalFiles);
+  const color = result.passed ? c.green : c.red;
+  lines.push(`${color}${c.bold}${result.passed ? symCheck : symCross}${summary}${c.reset}`);
 
   return lines.join("\n");
 }
@@ -208,6 +213,7 @@ export function formatGitHubAnnotations(result: CheckResult, cwd: string = proce
     const escapedFile = relPath.replace(/%/g, "%25").replace(/,/g, "%2C");
 
     for (const d of diags) {
+      if (d.baseline) continue;
       const line = d.range.start.line + 1;
       const col = d.range.start.character + 1;
       const endLine = d.range.end.line + 1;

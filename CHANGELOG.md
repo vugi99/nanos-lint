@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added diagnostic baseline recording and comparison, strict stale-entry checks, JSON classifications, and GitHub Action baseline inputs (#68).
+
 - Added `init --template` / `-t` to scaffold from custom JSONC settings, preserving realm mappings and library entries with vendoring (#62).
 
 - Added `--offline` for local-only LuaLS and annotation resolution across commands, preserving stale caches and explicit version constraints (#61).

@@ -112,6 +112,12 @@ export function createProgram(options?: CreateProgramOptions): Command {
       `Version of LuaLS to use (default: ${DEFAULT_LUALS_VERSION})`,
       DEFAULT_LUALS_VERSION,
     )
+    .option("--baseline <path>", "Report and fail only on diagnostics absent from a saved baseline")
+    .option(
+      "--write-baseline <path>",
+      "Record current diagnostics as a baseline and exit successfully",
+    )
+    .option("--baseline-strict", "Also fail on stale baseline entries (requires --baseline)")
     .option("--no-fail", "Do not exit with code 1 if diagnostics are found")
     .addOption(
       new Option(

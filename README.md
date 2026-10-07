@@ -104,20 +104,23 @@ jobs:
 
 ### Action Inputs
 
-| Input           | Description                                                                           | Default   |
-| :-------------- | :------------------------------------------------------------------------------------ | :-------- |
-| `path`          | Path to workspace directory or Lua file to check                                      | `.`       |
-| `paths`         | One or more workspace target paths or Lua files to check (newline or comma-separated) | `""`      |
-| `dep`           | External package dependency paths or definition files (newline or comma-separated)    | `""`      |
-| `checklevel`    | Minimum severity to report (`Error`, `Warning`, `Information`, `Hint`)                | `Warning` |
-| `config`        | Path to a custom `.luarc.json` configuration file                                     | `""`      |
-| `annotations`   | Path to a custom `annotations.lua` file                                               | `""`      |
-| `ignore`        | Files or directories to ignore (supports glob patterns, newline or comma separated)   | `""`      |
-| `luals-version` | Version of `lua-language-server` to use                                               | `latest`  |
-| `fail-on-error` | Fail the workflow step if diagnostics are found                                       | `true`    |
-| `log-level`     | Logging level (`error`, `warn`, `info`, `debug`, `silent`)                            | `warn`    |
-| `realm`         | Execution realm to check (`all`, `client`, `server`, `shared`)                        | `all`     |
-| `cache`         | Whether to cache the LuaLS binary and annotations across workflow runs                | `true`    |
+| Input             | Description                                                                           | Default   |
+| :---------------- | :------------------------------------------------------------------------------------ | :-------- |
+| `path`            | Path to workspace directory or Lua file to check                                      | `.`       |
+| `paths`           | One or more workspace target paths or Lua files to check (newline or comma-separated) | `""`      |
+| `dep`             | External package dependency paths or definition files (newline or comma-separated)    | `""`      |
+| `checklevel`      | Minimum severity to report (`Error`, `Warning`, `Information`, `Hint`)                | `Warning` |
+| `config`          | Path to a custom `.luarc.json` configuration file                                     | `""`      |
+| `annotations`     | Path to a custom `annotations.lua` file                                               | `""`      |
+| `ignore`          | Files or directories to ignore (supports glob patterns, newline or comma separated)   | `""`      |
+| `luals-version`   | Version of `lua-language-server` to use                                               | `latest`  |
+| `baseline`        | Accepted diagnostic baseline; only new diagnostics fail                               | `""`      |
+| `write-baseline`  | Record current diagnostics and exit successfully                                      | `""`      |
+| `baseline-strict` | Also fail when baseline entries disappear (requires `baseline`)                       | `false`   |
+| `fail-on-error`   | Fail the workflow step if diagnostics are found                                       | `true`    |
+| `log-level`       | Logging level (`error`, `warn`, `info`, `debug`, `silent`)                            | `warn`    |
+| `realm`           | Execution realm to check (`all`, `client`, `server`, `shared`)                        | `all`     |
+| `cache`           | Whether to cache the LuaLS binary and annotations across workflow runs                | `true`    |
 
 `paths` takes precedence over `path` when both are set; `path` is kept for backwards compatibility with the single-target form.
 
@@ -158,6 +161,9 @@ OPTIONS:
   --format=<format>        Output format: pretty, json, github (default: pretty)
   --github                 Output in GitHub Actions format (shortcut for --format=github)
   --luals-version=<ver>    Version of LuaLS to use (default: latest, falling back to 3.19.1 when offline)
+  --baseline <path>       Report and fail only on new diagnostics
+  --write-baseline <path> Record diagnostics and exit 0
+  --baseline-strict       Also fail on stale entries (requires --baseline)
   --no-fail                Do not exit with code 1 if diagnostics are found
   --realm <realm>          Execution realm to check: all, client, server, shared (default: all)
   --no-progress            Disable the interactive download, extraction and realm derivation progress display
@@ -452,3 +458,37 @@ are preserved, including `{}` to disable realms. Omitted realm mappings receive
 the conventional Server/Client/Shared defaults. Vendoring adds its annotation
 library, ignore and exclusion entries without discarding template entries. Existing
 `.luarc.json` files still require `--force` to overwrite.
+
+Use a diagnostic baseline to accept an existing backlog and fail on new problems:
+
+```sh
+nanos-lint check . --write-baseline .nanos-lint/baseline.json
+nanos-lint check . --baseline .nanos-lint/baseline.json
+nanos-lint check . --baseline .nanos-lint/baseline.json --baseline-strict
+```
+
+Recording writes all reported diagnostics in a deterministic versioned JSON file,
+creates parent directories, and exits 0 (also with `--no-fail`). Comparison shows
+only new diagnostics with a summary such as `12 new, 154 baselined, 166 total`.
+JSON output retains every diagnostic and adds `baseline: true|false` plus
+`baselineSummary` counts. GitHub annotations are emitted only for new diagnostics.
+
+Matches use paths relative to the checked root, diagnostic code, whitespace-normalized
+message, severity, and occurrence counts. Line changes preserve matches; additional
+occurrences or severity changes are new problems. Removed occurrences are stale and
+only fail with `--baseline-strict`. `--no-fail` suppresses diagnostic failure, including
+strict staleness; invalid baseline files still fail. Missing, invalid, or incompatible
+files require regeneration with `--write-baseline`. Recording and comparison are
+mutually exclusive. Keep targets, realm, check level, configuration, and LuaLS version
+consistent between runs; pin `--luals-version` to avoid diagnostic changes from upgrades.
+Relative baseline paths are resolved from the working directory.
+
+The GitHub Action exposes the same options as `baseline`, `write-baseline`, and
+`baseline-strict` inputs:
+
+```yaml
+- uses: vugi99/nanos-lint@v3
+  with:
+    baseline: .nanos-lint/baseline.json
+    baseline-strict: "false"
+```

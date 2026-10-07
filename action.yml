@@ -34,6 +34,18 @@ inputs:
     description: 'Version of LuaLS to use (or "latest")'
     required: false
     default: "latest"
+  baseline:
+    description: "Path to an accepted diagnostic baseline; only new diagnostics fail"
+    required: false
+    default: ""
+  write-baseline:
+    description: "Record current diagnostics to this baseline path and exit successfully"
+    required: false
+    default: ""
+  baseline-strict:
+    description: "Also fail on stale baseline entries (requires baseline)"
+    required: false
+    default: "false"
   fail-on-error:
     description: "Whether to fail the action step if diagnostic errors/warnings are found"
     required: false
@@ -93,6 +105,9 @@ runs:
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         INPUT_LUALS_VERSION: ${{ inputs.luals-version }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_WRITE_BASELINE: ${{ inputs.write-baseline }}
+        INPUT_BASELINE_STRICT: ${{ inputs.baseline-strict }}
         INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
         INPUT_LOG_LEVEL: ${{ inputs.log-level }}
         INPUT_REALM: ${{ inputs.realm }}
@@ -151,6 +166,18 @@ runs:
               ARGS+=("--ignore=$trimmed")
             fi
           done <<< "$INPUT_IGNORE"
+        fi
+
+        if [ -n "$INPUT_BASELINE" ]; then
+          ARGS+=("--baseline=$INPUT_BASELINE")
+        fi
+
+        if [ -n "$INPUT_WRITE_BASELINE" ]; then
+          ARGS+=("--write-baseline=$INPUT_WRITE_BASELINE")
+        fi
+
+        if [ "$INPUT_BASELINE_STRICT" = "true" ]; then
+          ARGS+=("--baseline-strict")
         fi
 
         if [ "$INPUT_FAIL_ON_ERROR" = "false" ]; then

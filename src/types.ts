@@ -21,6 +21,8 @@ export interface Diagnostic {
   code?: string;
   message: string;
   source?: string;
+  /** Present when comparing or recording a diagnostic baseline. */
+  baseline?: boolean;
 }
 
 export type DiagnosticReport = Record<string, Diagnostic[]>;
@@ -50,6 +52,7 @@ export interface CheckResult {
   totalFiles: number;
   totalFilesChecked?: number;
   diagnostics: DiagnosticReport;
+  baselineSummary?: { new: number; baselined: number; total: number; stale: number };
 }
 
 /** Execution realm of a nanos world script, as loaded by the server or client VM. */
