@@ -565,6 +565,8 @@ export function resolveRealmMappings(userConfig: LuaRCConfig): ResolvedRealmMapp
 }
 
 export interface InitWorkspaceOptions {
+  /** Custom JSONC configuration used as the scaffold base. */
+  templatePath?: string;
   force?: boolean;
   /** Definitions file vendored into `.nanos-lint/`; only meaningful together with `vendor`. */
   annotationsPath?: string;
@@ -593,7 +595,14 @@ export function initWorkspace(workspacePath: string, options?: InitWorkspaceOpti
     );
   }
 
-  const template = loadConfigFile(getDefaultTemplatePath());
+  const template = loadConfigFile(path.resolve(options?.templatePath ?? getDefaultTemplatePath()));
+  if (!template || typeof template !== "object" || Array.isArray(template)) {
+    throw new ConfigError("Init template must contain a configuration object.", "ERR_CONFIG_PARSE");
+  }
+  template.nanos ??= {};
+  template.nanos.realms ??= Object.fromEntries(
+    DEFAULT_REALM_MAPPINGS.map(({ pattern, realm }) => [pattern, realm]),
+  );
 
   if (options?.vendor) {
     const sourceAnnotations = options.annotationsPath || getDefaultAnnotationsPath();
@@ -606,24 +615,21 @@ export function initWorkspace(workspacePath: string, options?: InitWorkspaceOpti
       );
     }
 
-    const targetNanosDir = path.join(workspacePath, ".nanos-lint");
-    fs.mkdirSync(targetNanosDir, { recursive: true });
-    const targetAnnotations = path.join(targetNanosDir, "annotations.lua");
+    const targetAnnotations = path.join(workspacePath, ".nanos-lint", "annotations.lua");
+    fs.mkdirSync(path.dirname(targetAnnotations), { recursive: true });
     fs.copyFileSync(sourceAnnotations, targetAnnotations);
 
     template.workspace = template.workspace ?? {};
-    template.workspace.library = [".nanos-lint/annotations.lua"];
+    template.workspace.library = [
+      ...new Set([...(template.workspace.library ?? []), ".nanos-lint/annotations.lua"]),
+    ];
 
-    const existingIgnore = template.workspace.ignoreDir ?? [];
-    if (!existingIgnore.includes(".nanos-lint")) {
-      template.workspace.ignoreDir = [".nanos-lint", ...existingIgnore];
-    }
+    template.workspace.ignoreDir = [
+      ...new Set([".nanos-lint", ...(template.workspace.ignoreDir ?? [])]),
+    ];
 
     template.files = template.files ?? {};
-    const existingExclude = template.files.exclude ?? [];
-    if (!existingExclude.includes(".nanos-lint/**")) {
-      template.files.exclude = [".nanos-lint/**", ...existingExclude];
-    }
+    template.files.exclude = [...new Set([".nanos-lint/**", ...(template.files.exclude ?? [])])];
   }
 
   fs.writeFileSync(targetFile, JSON.stringify(template, null, 2), "utf-8");

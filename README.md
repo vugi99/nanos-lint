@@ -161,6 +161,7 @@ OPTIONS:
   --no-fail                Do not exit with code 1 if diagnostics are found
   --realm <realm>          Execution realm to check: all, client, server, shared (default: all)
   --no-progress            Disable the interactive download, extraction and realm derivation progress display
+  -t, --template <path>    (init command only) Use a custom JSONC scaffold template
   --vendor                 (init command only) Vendor annotations.lua into .nanos-lint/ inside workspace
   -f, --force              (init and copy-annotations only) Overwrite existing files
 ```
@@ -436,3 +437,18 @@ Pinned versions require a matching cache or local executable. Custom annotations
 cached annotations work offline. Missing assets fail with provisioning instructions.
 The flag controls nanos-lint; npm/npx may access the registry before it starts. Use
 a preinstalled executable or npm's own `--offline` with an already cached package.
+
+Initialize packages from a shared configuration template:
+
+```sh
+nanos-lint init Packages/events --template tools/team-luarc.json
+nanos-lint init Packages/events -t tools/team-luarc.json --vendor --annotations tools/annotations.lua
+```
+
+The custom JSON/JSONC file becomes the base configuration. Relative paths in its
+settings are interpreted relative to the target workspace, so shared templates can
+use entries such as `nanos.deps: ["../collider"]`. Custom settings and realm mappings
+are preserved, including `{}` to disable realms. Omitted realm mappings receive
+the conventional Server/Client/Shared defaults. Vendoring adds its annotation
+library, ignore and exclusion entries without discarding template entries. Existing
+`.luarc.json` files still require `--force` to overwrite.

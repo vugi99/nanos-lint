@@ -136,6 +136,7 @@ export function createProgram(options?: CreateProgramOptions): Command {
   program
     .command("init [path]")
     .description("Scaffold a .luarc.json configuration in the workspace")
+    .option("-t, --template <path>", "Custom JSONC .luarc.json scaffold template")
     .option("-f, --force", "Overwrite existing .luarc.json configuration")
     .option(
       "--vendor",
@@ -149,6 +150,7 @@ export function createProgram(options?: CreateProgramOptions): Command {
           force?: boolean;
           annotations?: string;
           vendor?: boolean;
+          template?: string;
           offline?: boolean;
         },
         cmd: Command,
@@ -164,6 +166,7 @@ export function createProgram(options?: CreateProgramOptions): Command {
           force: opts.force,
           annotationsPath,
           vendor: shouldVendor,
+          templatePath: opts.template,
         });
         writeOutput(`[init] Initialized nanos world LuaLS configuration: ${created}`);
         setExitCode(0);
