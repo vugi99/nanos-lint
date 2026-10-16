@@ -353,7 +353,16 @@ export async function runLuaLSCheck(
     tempOutputDir,
     `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   );
-  fs.mkdirSync(checkLogDir, { recursive: true });
+  try {
+    fs.mkdirSync(checkLogDir, { recursive: true });
+  } catch (err) {
+    throw new LuaLSError(
+      `Failed to create the LuaLS log directory ${checkLogDir}: ${err instanceof Error ? err.message : String(err)}`,
+      "ERR_LUALS_LOG_DIR",
+      "Ensure the temporary directory is writable and has sufficient disk space, or relocate it with TMPDIR (Linux/macOS) or TEMP (Windows).",
+      { cause: err },
+    );
+  }
 
   const args: string[] = [
     `--check=${checkDir}`,
@@ -405,27 +414,32 @@ export async function runLuaLSCheck(
         `[luals] Failed to delete check output file ${checkOutPath}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-    try {
-      fs.rmSync(checkLogDir, { recursive: true, force: true });
-    } catch (err) {
-      logger.debug(
-        `[luals] Failed to delete check log directory ${checkLogDir}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+    // A failed run keeps its log directory: service.log is the only record of why LuaLS
+    // crashed, timed out, or wrote no diagnostic output.
+    if (parseSucceeded) {
+      try {
+        fs.rmSync(checkLogDir, { recursive: true, force: true });
+      } catch (err) {
+        logger.debug(
+          `[luals] Failed to delete check log directory ${checkLogDir}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 
   if (!parseSucceeded) {
     const cacheHint = `(Cache location: ${getCacheDir()})`;
+    const logHint = `LuaLS log directory kept for diagnosis: ${checkLogDir}`;
     if (execError) {
       throw new LuaLSError(
-        `LuaLS check failed to execute or produce diagnostic output: ${execError instanceof Error ? execError.message : String(execError)}. ${cacheHint}`,
+        `LuaLS check failed to execute or produce diagnostic output: ${execError instanceof Error ? execError.message : String(execError)}. ${cacheHint} ${logHint}`,
         "ERR_LUALS_EXECUTION",
-        "Inspect the debug log with --log-level=debug or run 'nanos-lint clean-cache' to re-fetch LuaLS.",
+        "Inspect the LuaLS service log in the kept log directory, run with --log-level=debug, or run 'nanos-lint clean-cache' to re-fetch LuaLS.",
         { cause: execError },
       );
     }
     throw new LuaLSError(
-      `LuaLS check failed to produce diagnostic output at: ${checkOutPath}. ${cacheHint}`,
+      `LuaLS check failed to produce diagnostic output at: ${checkOutPath}. ${cacheHint} ${logHint}`,
       "ERR_LUALS_NO_OUTPUT",
       "Ensure the temporary directory is writable and sufficient disk space is available.",
     );
