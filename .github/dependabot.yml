@@ -4,12 +4,17 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: "weekly"
+
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     target-branch: "dev"
-    schedule:
-      interval: "weekly"
+    patterns: ["*"]
+    multi-ecosystem-group: "dependencies"
     ignore:
       # typescript-eslint v8 requires peer dependency typescript < 6.1.0
       # Ignore typescript >= 6.1.0 until typescript-eslint adds support
@@ -19,5 +24,5 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     target-branch: "dev"
-    schedule:
-      interval: "weekly"
+    patterns: ["*"]
+    multi-ecosystem-group: "dependencies"
