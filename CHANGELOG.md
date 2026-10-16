@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Isolated LuaLS runtime check logs to temporary directories and excluded runtime `log` directories from cached LuaLS copies, resolving flaky concurrent `EIO` errors during parallel Vitest runs.
 - Realm passes treat a `runtime.path` list that matches the bundled defaults by value as managed instead of customized, so workspaces scaffolded by `nanos-lint init` keep the shared-first realm resolution order and no longer report false `param-type-mismatch` diagnostics for `Package.Require("Util.lua")` calls in `Shared/` (PR #85 review).
 - A failed LuaLS check keeps its per-run log directory and names it in the error message, instead of deleting the `service.log` that explains a crash, timeout, or missing diagnostic output; an uncreatable temporary directory now raises an actionable `ERR_LUALS_LOG_DIR` error instead of a raw filesystem failure (PR #85 review).
+- The `Package.Require` live fixtures compare diagnostics against native real paths, so the CI matrix resolves the same relative paths on macOS (symlinked temporary directories), Windows (short `RUNNER~1` names) and Linux instead of only on Linux (PR #85 review).
 
 ## [3.5.0] - 2026-10-14
 

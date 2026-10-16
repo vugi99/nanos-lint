@@ -33,12 +33,28 @@ const anchoringRoot = path.join(getPackageRoot(), "tests", "fixtures", "require-
 
 let annotationsPath = "";
 
+/**
+ * Resolves symlinks and short names natively.
+ *
+ * LuaLS reports URIs for the real path it checked, so a workspace created under a
+ * symlinked temporary directory (`/var` on macOS, short `RUNNER~1` names on Windows)
+ * would otherwise never match the target path used to start the check.
+ */
+function canonicalPath(targetPath: string): string {
+  try {
+    return fs.realpathSync.native(targetPath);
+  } catch {
+    return path.resolve(targetPath);
+  }
+}
+
 /** Collects `<relative>:<line>:<code>` diagnostics from a LuaLS report. */
 function collectCodes(targetPath: string, diagnostics: DiagnosticReport): string[] {
+  const canonicalTarget = canonicalPath(targetPath);
   const codes: string[] = [];
   for (const [uri, entries] of Object.entries(diagnostics)) {
     const relative = path
-      .relative(targetPath, path.resolve(fileUriToPath(uri)))
+      .relative(canonicalTarget, canonicalPath(fileUriToPath(uri)))
       .replace(/\\/g, "/");
     for (const diagnostic of entries) {
       codes.push(`${relative}:${diagnostic.range.start.line + 1}:${diagnostic.code}`);
