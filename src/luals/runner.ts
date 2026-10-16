@@ -349,11 +349,18 @@ export async function runLuaLSCheck(
     `check-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`,
   );
 
+  const checkLogDir = path.join(
+    tempOutputDir,
+    `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  fs.mkdirSync(checkLogDir, { recursive: true });
+
   const args: string[] = [
     `--check=${checkDir}`,
     `--configpath=${path.resolve(configPath)}`,
     `--check_out_path=${checkOutPath}`,
     "--check_format=json",
+    `--logpath=${path.resolve(checkLogDir)}`,
   ];
 
   if (options.checklevel) {
@@ -376,23 +383,34 @@ export async function runLuaLSCheck(
 
   let diagnostics: DiagnosticReport = {};
   let parseSucceeded = false;
-  if (fs.existsSync(checkOutPath)) {
-    try {
-      const content = fs.readFileSync(checkOutPath, "utf-8");
-      diagnostics = JSON.parse(content) as DiagnosticReport;
-      parseSucceeded = true;
-    } catch (err) {
-      logger.error(
-        `[luals] Failed to read or parse diagnostic output from ${checkOutPath}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    } finally {
+  try {
+    if (fs.existsSync(checkOutPath)) {
       try {
-        fs.unlinkSync(checkOutPath);
+        const content = fs.readFileSync(checkOutPath, "utf-8");
+        diagnostics = JSON.parse(content) as DiagnosticReport;
+        parseSucceeded = true;
       } catch (err) {
-        logger.debug(
-          `[luals] Failed to delete check output file ${checkOutPath}: ${err instanceof Error ? err.message : String(err)}`,
+        logger.error(
+          `[luals] Failed to read or parse diagnostic output from ${checkOutPath}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
+    }
+  } finally {
+    try {
+      if (fs.existsSync(checkOutPath)) {
+        fs.unlinkSync(checkOutPath);
+      }
+    } catch (err) {
+      logger.debug(
+        `[luals] Failed to delete check output file ${checkOutPath}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    try {
+      fs.rmSync(checkLogDir, { recursive: true, force: true });
+    } catch (err) {
+      logger.debug(
+        `[luals] Failed to delete check log directory ${checkLogDir}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 

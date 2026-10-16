@@ -20,7 +20,10 @@ it.skipIf(!isLiveTestsEnabled())(
       const binaryHops = getPlatformInfo(FALLBACK_LUALS_VERSION).binaryRelativePath.split(
         path.sep,
       ).length;
-      fs.cpSync(path.resolve(binary, ...Array(binaryHops).fill("..")), bundle, { recursive: true });
+      fs.cpSync(path.resolve(binary, ...Array(binaryHops).fill("..")), bundle, {
+        recursive: true,
+        filter: (src) => path.basename(src) !== "log",
+      });
       for (const directory of ["dist", "templates"]) {
         fs.cpSync(path.resolve(directory), path.join(bundle, directory), { recursive: true });
       }
