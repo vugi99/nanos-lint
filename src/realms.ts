@@ -114,6 +114,14 @@ export interface RealmCheckPlan {
   cleanup: () => void;
 }
 
+const PACKAGE_REQUIRE_SIDE_PATHS: Record<"client" | "server", string[]> = {
+  server: ["Server/?", "Server/?.lua"],
+  client: ["Client/?", "Client/?.lua"],
+};
+const PACKAGE_REQUIRE_SHARED_PATHS = ["Shared/?", "Shared/?.lua"];
+const PACKAGE_REQUIRE_ROOT_PATHS = ["?", "?.lua"];
+const PACKAGE_REQUIRE_PACKAGE_PATHS = new Set(["Packages/?", "Packages/?.lua", "../?", "../?.lua"]);
+
 export interface PlanRealmCheckOptions {
   targetPath: string;
   userConfig: LuaRCConfig;
@@ -144,11 +152,76 @@ function buildPassConfig(
   realmAnnotationPath: string,
   excludedPatterns: string[],
   dependencyLibraries: string[] = [],
+  hasCustomRuntimePaths = false,
 ): Record<string, unknown> {
   const config = JSON.parse(JSON.stringify(baseConfig)) as {
+    runtime?: { path?: string[] };
     workspace?: { library?: string[] };
     files?: { exclude?: string[] };
   };
+  const runtimePaths = config.runtime?.path;
+  if (!hasCustomRuntimePaths && runtimePaths) {
+    const oppositeSidePaths =
+      realm === "server"
+        ? PACKAGE_REQUIRE_SIDE_PATHS.client
+        : realm === "client"
+          ? PACKAGE_REQUIRE_SIDE_PATHS.server
+          : [];
+    const activeRuntimePaths = runtimePaths.filter(
+      (pattern) => !oppositeSidePaths.includes(pattern),
+    );
+    const packagePaths = activeRuntimePaths.filter((pattern) =>
+      PACKAGE_REQUIRE_PACKAGE_PATHS.has(pattern),
+    );
+    const completePackagePair =
+      (packagePaths.includes("Packages/?") && packagePaths.includes("Packages/?.lua")) ||
+      (packagePaths.includes("../?") && packagePaths.includes("../?.lua"));
+    const requiredSidePaths =
+      realm === "shared"
+        ? [...PACKAGE_REQUIRE_SIDE_PATHS.server, ...PACKAGE_REQUIRE_SIDE_PATHS.client]
+        : PACKAGE_REQUIRE_SIDE_PATHS[realm];
+    const requiredPaths = [
+      ...requiredSidePaths,
+      ...PACKAGE_REQUIRE_SHARED_PATHS,
+      ...PACKAGE_REQUIRE_ROOT_PATHS,
+    ];
+    if (
+      completePackagePair &&
+      requiredPaths.every((pattern) => activeRuntimePaths.includes(pattern))
+    ) {
+      const knownPaths = new Set([
+        ...PACKAGE_REQUIRE_SIDE_PATHS.server,
+        ...PACKAGE_REQUIRE_SIDE_PATHS.client,
+        ...PACKAGE_REQUIRE_SHARED_PATHS,
+        ...PACKAGE_REQUIRE_ROOT_PATHS,
+        ...packagePaths,
+      ]);
+      const positions = activeRuntimePaths.flatMap((pattern, index) =>
+        knownPaths.has(pattern) ? [index] : [],
+      );
+      const officialOrder =
+        realm === "shared"
+          ? [
+              ...PACKAGE_REQUIRE_SHARED_PATHS,
+              ...PACKAGE_REQUIRE_SIDE_PATHS.server,
+              ...PACKAGE_REQUIRE_SIDE_PATHS.client,
+              ...PACKAGE_REQUIRE_ROOT_PATHS,
+              ...packagePaths,
+            ]
+          : [
+              ...PACKAGE_REQUIRE_SIDE_PATHS[realm],
+              ...PACKAGE_REQUIRE_SHARED_PATHS,
+              ...PACKAGE_REQUIRE_ROOT_PATHS,
+              ...packagePaths,
+            ];
+      if (positions.length === officialOrder.length) {
+        for (const [index, position] of positions.entries()) {
+          activeRuntimePaths[position] = officialOrder[index]!;
+        }
+        config.runtime = { ...(config.runtime ?? {}), path: activeRuntimePaths };
+      }
+    }
+  }
   const normalizedFull = annotationsPath.replace(/\\/g, "/");
   const libraries = (config.workspace?.library ?? []).filter(
     (entry) => entry.replace(/\\/g, "/") !== normalizedFull,
@@ -267,6 +340,7 @@ export function planRealmCheck(options: PlanRealmCheckOptions): RealmCheckPlan |
         realm === "client" ? derived.client : realm === "server" ? derived.server : annotationsPath,
         excluded,
         depLibraries,
+        userConfig.runtime?.path !== undefined,
       );
       const configPath = writeTempConfig(passConfig);
       tempConfigs.push(configPath);

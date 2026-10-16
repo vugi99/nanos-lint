@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Aligned LuaLS `Package.Require` lookup with nanos world's search order using a resolver plugin for current-file-relative imports plus side-specific, shared, package-root, and sibling-package paths; documented the native searchers and cached-result behavior (#79).
+
 ## [3.5.0] - 2026-10-14
 
 ### Added

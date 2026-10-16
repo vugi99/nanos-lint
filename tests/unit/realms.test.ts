@@ -350,20 +350,59 @@ describe("realm check planning (#15)", () => {
     expect(plan!.passes.map((pass) => pass.realm)).toEqual(["server", "client", "shared"]);
     const serverPass = plan!.passes[0]!;
     const serverConfig = JSON.parse(fs.readFileSync(serverPass.configPath, "utf-8")) as {
+      runtime: { path: string[] };
       workspace: { library: string[] };
       files: { exclude: string[] };
     };
     expect(serverConfig.workspace.library[0]).toContain("annotations.server.lua");
     expect(serverConfig.files.exclude).toContain("Client/**");
     expect(serverConfig.files.exclude).not.toContain("Shared/**");
+    expect(serverConfig.runtime.path).toEqual([
+      "Server/?",
+      "Server/?.lua",
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
+
+    const clientPass = plan!.passes[1]!;
+    const clientConfig = JSON.parse(fs.readFileSync(clientPass.configPath, "utf-8")) as {
+      runtime: { path: string[] };
+    };
+    expect(clientConfig.runtime.path).toEqual([
+      "Client/?",
+      "Client/?.lua",
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
 
     const sharedPass = plan!.passes[2]!;
     const sharedConfig = JSON.parse(fs.readFileSync(sharedPass.configPath, "utf-8")) as {
+      runtime: { path: string[] };
       workspace: { library: string[] };
       files: { exclude: string[] };
     };
     expect(sharedConfig.workspace.library[0]).toBe(path.join(root, "annotations.lua"));
     expect(sharedConfig.files.exclude).not.toContain("Client/**");
+    expect(sharedConfig.runtime.path).toEqual([
+      "Shared/?",
+      "Shared/?.lua",
+      "Server/?",
+      "Server/?.lua",
+      "Client/?",
+      "Client/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
 
     const configPaths = [plan!.baseConfigPath, ...plan!.passes.map((pass) => pass.configPath)];
     plan!.cleanup();

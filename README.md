@@ -455,6 +455,25 @@ When packages depend on other packages (e.g. located in `Server/Packages/` or ex
 - **Realm Partitioning**: Dependency directories are inspected for realm conventions (`Server/`, `Client/`, `Shared/`). Server passes only include `Server/` and `Shared/` folders of dependencies; client passes only include `Client/` and `Shared/` folders. Single definition `.lua` files and non-partitioned dependency directories are included in all passes.
 - **Resilience**: If a declared dependency path does not exist, `nanos-lint` emits a warning and continues without failing the lint pass.
 
+### `Package.Require` File Resolution
+
+`Package.Require` loads Lua files by path, so you can usually pass only the file name:
+
+```lua
+Package.Require("Weapons.lua")      -- my-package/Server/Weapons.lua
+Package.Require("Utils/Math.lua")   -- my-package/Server/Utils/Math.lua
+```
+
+nanos world searches in this order:
+
+1. Relative to the current file
+2. Relative to `my-package/Server/` or `my-package/Client/`, depending on the side
+3. Relative to `my-package/Shared/`
+4. Relative to `my-package/`
+5. Relative to `Packages/`
+
+A file runs once; later calls to `Package.Require` return its cached result. The bundled LuaLS configuration uses a resolver plugin to check the current file's directory first, then slash-separated, extension-preserving `runtime.path` patterns for the remaining locations. Realm-aware server and client checks put the matching side first, followed by `Shared/`, the package root, and `Packages/`; the shared pass starts with `Shared/` and keeps both side folders available. When checking a package directory directly under `Packages/`, nanos-lint maps the final searcher to its sibling packages. A custom `runtime.path` replaces these defaults, so include the paths your package uses when overriding it. If you set a custom `runtime.plugin`, it remains in control of require resolution. See the official [Package Loading & Lua Environment guide](https://docs.nanos-world.com/docs/core-concepts/packages/package-loading-and-lua-environment#splitting-your-code-in-files).
+
 ### Exported Globals (`Package.Export`)
 
 Dependency packages publish cross-package APIs with `Package.Export("Name", value)`, which binds `value` to the global `Name` for every package on the same side. LuaLS cannot see that binding on its own, so consumers of the exported name would report `undefined-global`.
@@ -483,7 +502,6 @@ Notes:
 - The exported **value** may be any expression, including an inline `function(...) ... end` whose body contains its own commas and nested blocks; it is mirrored as written.
 - Mirrors inherit the realm of the script they come from: an export of a dependency `Server/` script is only visible to `--realm server` passes.
 - Generated files live in a temporary directory that is removed after the run; dependency sources are never modified.
-- nanos world loads scripts **by file path** (`Package.Require("Utils/Math.lua")`) and has no dot-style module syntax: `Package.Require` takes a `file_path` and searches relative to the current file, `Client/`/`Server/`, `Shared/`, the package root, then `Packages/`. The bundled configuration sets `Lua.completion.requireSeparator` to `/` and adds extension-preserving `runtime.path` entries so those file paths resolve — and keep their types — instead of being treated as dot-separated module names. A custom `runtime.path` in your `.luarc.json` replaces these defaults.
 
 ### File Counting and Glob Semantics
 

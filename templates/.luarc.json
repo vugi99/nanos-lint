@@ -4,14 +4,16 @@
   "runtime": {
     "version": "Lua 5.4",
     "path": [
-      "?",
-      "?.lua",
-      "Shared/?",
-      "Shared/?.lua",
+      "Server/?",
+      "Server/?.lua",
       "Client/?",
       "Client/?.lua",
-      "Server/?",
-      "Server/?.lua"
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua"
     ],
     "special": {
       "Package.Require": "require"

@@ -6,6 +6,7 @@ import { systemPaths } from "./paths.js";
 import { logger } from "./logger.js";
 import type { LuaRCConfig } from "./types.js";
 import { ConfigError } from "./errors.js";
+import { configurePackageRequire } from "./package-require-paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -330,11 +331,7 @@ export function mergeConfigs(
     $schema: override.$schema ?? base.$schema,
     ...base,
     ...override,
-    runtime: {
-      version: "Lua 5.4",
-      ...(base.runtime ?? {}),
-      ...(override.runtime ?? {}),
-    },
+    runtime: { version: "Lua 5.4", ...(base.runtime ?? {}), ...(override.runtime ?? {}) },
     workspace: {
       checkThirdParty: false,
       ...(base.workspace ?? {}),
@@ -438,6 +435,7 @@ export function buildWorkspaceConfig(
     cliIgnore,
     dependencyLibraries: options?.dependencyLibraries,
   });
+  configurePackageRequire(merged, workspacePath, getPackageRoot());
 
   // Only apply hardcoded tool directory exclusions when CLI ignore was NOT provided
   if (!hasCliIgnore) {

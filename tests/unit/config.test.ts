@@ -9,6 +9,7 @@ import {
   getDefaultTemplatePath,
   loadConfigFile,
   mergeConfigs,
+  buildWorkspaceConfig,
   parseJsonc,
   stripJsonComments,
   stripTrailingSlashes,
@@ -42,12 +43,50 @@ describe("config module", () => {
     const templatePath = getDefaultTemplatePath();
     const config = loadConfigFile(templatePath);
     expect(config.runtime?.version).toBe("Lua 5.4");
-    expect(config.runtime?.path).toContain("Shared/?.lua");
+    expect(config.runtime?.path).toEqual([
+      "Server/?",
+      "Server/?.lua",
+      "Client/?",
+      "Client/?.lua",
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
     expect(config.runtime?.special?.["Package.Require"]).toBe("require");
     expect(config.diagnostics?.enable).toBe(true);
     expect(config.diagnostics?.severity?.["unused-local"]).toBe("Warning");
     expect(config.workspace?.ignoreDir).toContain("script");
     expect(config.workspace?.ignoreDir).toContain("node_modules");
+  });
+
+  it("maps the Packages searcher to sibling packages when checking one package", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nanos-package-paths-"));
+    const packageDir = path.join(tempDir, "Packages", "current");
+    try {
+      fs.mkdirSync(packageDir, { recursive: true });
+      const defaults = buildWorkspaceConfig(packageDir);
+      expect(defaults.runtime?.path).toContain("../?");
+      expect(defaults.runtime?.path).toContain("../?.lua");
+      expect(defaults.runtime?.path).not.toContain("Packages/?");
+      expect(defaults.runtime?.plugin).toBe(
+        path.join(getPackageRoot(), "templates", "package-require.lua").replace(/\\/g, "/"),
+      );
+
+      fs.writeFileSync(
+        path.join(packageDir, ".luarc.json"),
+        JSON.stringify({
+          runtime: { path: ["custom/?.lua"], plugin: "custom-plugin.lua" },
+        }),
+      );
+      const custom = buildWorkspaceConfig(packageDir);
+      expect(custom.runtime?.path).toEqual(["custom/?.lua"]);
+      expect(custom.runtime?.plugin).toBe("custom-plugin.lua");
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   describe("shipped templates/.luarc.json validation (Issue #36)", () => {
