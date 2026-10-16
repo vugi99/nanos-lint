@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { getDefaultTemplatePath, loadUserConfig } from "../../src/config.js";
 import type { RealmMapping } from "../../src/config.js";
 import {
   collectRealmFiles,
@@ -409,6 +410,86 @@ describe("realm check planning (#15)", () => {
     for (const configPath of configPaths) {
       expect(fs.existsSync(configPath)).toBe(false);
     }
+  });
+
+  it("keeps the realm-aware order when the workspace declares the bundled default paths (#79)", () => {
+    const root = makeTempDir("nanos-realm-plan-default-paths-");
+    writeTree(root, {
+      "Server/a.lua": "-- s",
+      "Client/b.lua": "-- c",
+      "Shared/c.lua": "-- sh",
+      "annotations.lua": ANNOTATIONS_FIXTURE,
+    });
+    // `nanos-lint init` scaffolds the bundled template verbatim, so the declared list is
+    // behaviorally identical to declaring nothing at all.
+    fs.copyFileSync(getDefaultTemplatePath(), path.join(root, ".luarc.json"));
+    const plan = planRealmCheck({
+      targetPath: root,
+      userConfig: loadUserConfig(root),
+      selection: "all",
+      annotationsPath: path.join(root, "annotations.lua"),
+    });
+
+    expect(plan).not.toBeNull();
+    const pathsOf = (index: number): string[] =>
+      (
+        JSON.parse(fs.readFileSync(plan!.passes[index]!.configPath, "utf-8")) as {
+          runtime: { path: string[] };
+        }
+      ).runtime.path;
+
+    expect(pathsOf(0)).toEqual([
+      "Server/?",
+      "Server/?.lua",
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
+    expect(pathsOf(2)).toEqual([
+      "Shared/?",
+      "Shared/?.lua",
+      "Server/?",
+      "Server/?.lua",
+      "Client/?",
+      "Client/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua",
+    ]);
+    plan!.cleanup();
+  });
+
+  it("leaves a genuinely custom runtime.path untouched in every pass (#79)", () => {
+    const root = makeTempDir("nanos-realm-plan-custom-paths-");
+    writeTree(root, {
+      "Server/a.lua": "-- s",
+      "Client/b.lua": "-- c",
+      "Shared/c.lua": "-- sh",
+      "annotations.lua": ANNOTATIONS_FIXTURE,
+    });
+    fs.writeFileSync(
+      path.join(root, ".luarc.json"),
+      JSON.stringify({ runtime: { path: ["Custom/?"] } }),
+    );
+    const plan = planRealmCheck({
+      targetPath: root,
+      userConfig: loadUserConfig(root),
+      selection: "all",
+      annotationsPath: path.join(root, "annotations.lua"),
+    });
+
+    expect(plan).not.toBeNull();
+    for (const pass of plan!.passes) {
+      const config = JSON.parse(fs.readFileSync(pass.configPath, "utf-8")) as {
+        runtime: { path: string[] };
+      };
+      expect(config.runtime.path).toEqual(["Custom/?"]);
+    }
+    plan!.cleanup();
   });
 
   it("restricts the selection to the requested side plus the shared pass", () => {

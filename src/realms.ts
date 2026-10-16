@@ -17,6 +17,7 @@ import {
 } from "./target-resolver.js";
 import { resolvePackageDependencies } from "./deps.js";
 import { generatePackageExportBindings, type ExportBindingLibraries } from "./package-exports.js";
+import { hasCustomRuntimePaths } from "./package-require-paths.js";
 import {
   fileUriToPath,
   type CheckOptions,
@@ -340,7 +341,7 @@ export function planRealmCheck(options: PlanRealmCheckOptions): RealmCheckPlan |
         realm === "client" ? derived.client : realm === "server" ? derived.server : annotationsPath,
         excluded,
         depLibraries,
-        userConfig.runtime?.path !== undefined,
+        hasCustomRuntimePaths(userConfig),
       );
       const configPath = writeTempConfig(passConfig);
       tempConfigs.push(configPath);

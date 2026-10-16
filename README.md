@@ -266,7 +266,7 @@ OPTIONS:
   --offline                Use local dependencies only; never access the network
   --no-progress            Disable the interactive download, extraction and realm derivation progress display
   -t, --template <path>    (init command only) Use a custom JSONC scaffold template
-  --vendor                 (init command only) Vendor annotations.lua into .nanos-lint/ inside workspace
+  --vendor                 (init command only) Vendor annotations.lua and the resolver plugin into .nanos-lint/
   -f, --force              (init and copy-annotations only) Overwrite existing files
 ```
 
@@ -360,11 +360,13 @@ If your project already has a `.luarc.json`, `nanos-lint` automatically merges i
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "diagnostics": {
-    "disable": ["lowercase-global"],
+    "disable": ["lowercase-global", "different-requires"],
     "globals": ["MyCustomGlobal"]
   }
 }
 ```
+
+A `diagnostics.disable` list replaces the bundled one, which contains `different-requires` (see [`Package.Require` File Resolution](#packagerequire-file-resolution)): keep that entry in your list to stay free of its false positives, or drop it to get the warning back.
 
 To scaffold a `.luarc.json` configuration in your project:
 
@@ -380,7 +382,8 @@ runtime, so a later cache update is picked up without touching repository files.
 `.luarc.json` directly need a pinned copy, which is always an explicit opt-in:
 
 ```bash
-# Initialize with annotations vendored into .nanos-lint/ and pinned in workspace.library
+# Initialize with annotations.lua and the Package.Require resolver plugin vendored into
+# .nanos-lint/ (annotations pinned in workspace.library, plugin pinned in runtime.plugin)
 npx nanos-lint init --vendor
 
 # Or copy the cached annotations to a custom file, or to any target that does not end in
@@ -472,7 +475,14 @@ nanos world searches in this order:
 4. Relative to `my-package/`
 5. Relative to `Packages/`
 
-A file runs once; later calls to `Package.Require` return its cached result. The bundled LuaLS configuration uses a resolver plugin to check the current file's directory first, then slash-separated, extension-preserving `runtime.path` patterns for the remaining locations. Realm-aware server and client checks put the matching side first, followed by `Shared/`, the package root, and `Packages/`; the shared pass starts with `Shared/` and keeps both side folders available. When checking a package directory directly under `Packages/`, nanos-lint maps the final searcher to its sibling packages. A custom `runtime.path` replaces these defaults, so include the paths your package uses when overriding it. If you set a custom `runtime.plugin`, it remains in control of require resolution. See the official [Package Loading & Lua Environment guide](https://docs.nanos-world.com/docs/core-concepts/packages/package-loading-and-lua-environment#splitting-your-code-in-files).
+A file runs once; later calls to `Package.Require` return its cached result. The bundled LuaLS configuration sets `Lua.completion.requireSeparator` to `/`, so `Package.Require` completion and the slash-separated, extension-preserving `runtime.path` patterns treat `"Utils/Math.lua"` as a file path instead of a dot-separated module name. A resolver plugin checks the current file's directory first, then those patterns for the remaining locations. Realm-aware server and client checks put the matching side first, followed by `Shared/`, the package root, and `Packages/`; the shared pass starts with `Shared/` and keeps both side folders available. When checking a package directory directly under `Packages/`, nanos-lint maps the final searcher to its sibling packages. A `runtime.path` that matches the bundled defaults by value stays managed by nanos-lint, so the scaffolded defaults keep the realm-aware order; a genuinely custom list replaces them, so include the paths your package uses when overriding it. If you set a custom `runtime.plugin`, it remains in control of require resolution. See the official [Package Loading & Lua Environment guide](https://docs.nanos-world.com/docs/core-concepts/packages/package-loading-and-lua-environment#splitting-your-code-in-files).
+
+Two LuaLS defaults are adjusted for nanos world semantics:
+
+- `Lua.runtime.pathStrict` is enabled, so a searcher pattern only matches at the location it names. Without it LuaLS matches patterns as URI suffixes and could bind `Package.Require("Deep/Nested.lua")` to `Packages/other/Server/Deep/Nested.lua` — a file nanos world would never load from there.
+- `different-requires` is disabled through `diagnostics.disable`. nanos world documents both package-relative (`Storage/Codec.lua`) and package-qualified (`vconfig/Server/Storage/Codec.lua`) spellings of the same file as valid, and LuaLS only raises that warning when two spellings resolve to the _same_ file, so it is a guaranteed false positive here. A `diagnostics.disable` list in your own `.luarc.json` replaces the bundled one, so include `different-requires` to keep the warning suppressed — omitting it (or setting `"disable": []`) gives the warning back.
+
+Editors only read `.luarc.json`, so the CLI injects the resolver plugin at check time and `nanos-lint init` alone leaves relative imports unresolved in VS Code/Neovim. `nanos-lint init --vendor` copies both `annotations.lua` and the resolver plugin into `.nanos-lint/` and pins `runtime.plugin` to the vendored copy, which keeps the editor and `nanos-lint check` in agreement.
 
 ### Exported Globals (`Package.Export`)
 

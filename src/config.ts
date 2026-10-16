@@ -6,7 +6,7 @@ import { systemPaths } from "./paths.js";
 import { logger } from "./logger.js";
 import type { LuaRCConfig } from "./types.js";
 import { ConfigError } from "./errors.js";
-import { configurePackageRequire } from "./package-require-paths.js";
+import { configurePackageRequire, vendorPackageRequirePlugin } from "./package-require-paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -568,7 +568,8 @@ export interface InitWorkspaceOptions {
   force?: boolean;
   /** Definitions file vendored into `.nanos-lint/`; only meaningful together with `vendor`. */
   annotationsPath?: string;
-  /** Copies `annotations.lua` into the workspace and pins it in `workspace.library`. */
+  /** Copies `annotations.lua` into the workspace and pins it in `workspace.library`, and
+   * vendors the `Package.Require` resolver plugin into `.nanos-lint/`. */
   vendor?: boolean;
 }
 
@@ -628,6 +629,10 @@ export function initWorkspace(workspacePath: string, options?: InitWorkspaceOpti
 
     template.files = template.files ?? {};
     template.files.exclude = [...new Set([".nanos-lint/**", ...(template.files.exclude ?? [])])];
+
+    // The editor otherwise resolves `Package.Require` with LuaLS searchers only, while the
+    // CLI injects the current-file-relative plugin at check time (#79).
+    vendorPackageRequirePlugin(workspacePath, template, getPackageRoot());
   }
 
   fs.writeFileSync(targetFile, JSON.stringify(template, null, 2), "utf-8");

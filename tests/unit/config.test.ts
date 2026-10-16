@@ -507,6 +507,63 @@ describe("config module", () => {
         const config = JSON.parse(fs.readFileSync(created, "utf-8"));
         expect(config.workspace?.library).toEqual([".nanos-lint/annotations.lua"]);
         expect(fs.existsSync(path.join(tempDir, ".nanos-lint", "annotations.lua"))).toBe(true);
+
+        // The editor has no CLI to inject the resolver plugin, so `--vendor` ships it too (#79).
+        expect(config.runtime?.plugin).toBe(".nanos-lint/package-require.lua");
+        const vendoredPlugin = path.join(tempDir, ".nanos-lint", "package-require.lua");
+        expect(fs.readFileSync(vendoredPlugin, "utf-8")).toBe(
+          fs.readFileSync(path.join(getPackageRoot(), "templates", "package-require.lua"), "utf-8"),
+        );
+
+        // A template that pins its own plugin keeps it instead of the vendored copy.
+        const customTemplate = path.join(tempDir, "custom-template.json");
+        fs.writeFileSync(
+          customTemplate,
+          JSON.stringify({ runtime: { plugin: "tools/my-plugin.lua" } }),
+        );
+        const customDir = path.join(tempDir, "custom");
+        fs.mkdirSync(customDir, { recursive: true });
+        const customCreated = initWorkspace(customDir, {
+          vendor: true,
+          annotationsPath: dummyAnnotations,
+          templatePath: customTemplate,
+        });
+        expect(JSON.parse(fs.readFileSync(customCreated, "utf-8")).runtime?.plugin).toBe(
+          "tools/my-plugin.lua",
+        );
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it("keeps the package-root searchers anchored and different-requires disabled (#79)", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nanos-template-defaults-"));
+      try {
+        const managed = resolveWorkspaceConfig(tempDir, undefined, {
+          annotationsPath: path.join(tempDir, "annotations.lua"),
+        });
+        const merged = JSON.parse(fs.readFileSync(managed.configPath, "utf-8"));
+        // Suffix matching would bind a require to any same-named file at any depth.
+        expect(merged.runtime.pathStrict).toBe(true);
+        // nanos world treats package-relative and package-qualified spellings as equivalent,
+        // and LuaLS only reports different-requires when both resolve to the same file.
+        expect(merged.diagnostics.disable).toEqual(["different-requires"]);
+        if (fs.existsSync(managed.configPath)) {
+          fs.unlinkSync(managed.configPath);
+        }
+
+        // A workspace that declares its own `diagnostics.disable` list replaces the bundled
+        // one, which hands the diagnostic back to LuaLS.
+        const reenabled = path.join(tempDir, "reenabled.json");
+        fs.writeFileSync(reenabled, JSON.stringify({ diagnostics: { disable: [] } }));
+        const overridden = resolveWorkspaceConfig(tempDir, reenabled, {
+          annotationsPath: path.join(tempDir, "annotations.lua"),
+        });
+        const mergedOverride = JSON.parse(fs.readFileSync(overridden.configPath, "utf-8"));
+        expect(mergedOverride.diagnostics.disable).toEqual([]);
+        if (fs.existsSync(overridden.configPath)) {
+          fs.unlinkSync(overridden.configPath);
+        }
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }

@@ -3,6 +3,7 @@
   "Lua.completion.requireSeparator": "/",
   "runtime": {
     "version": "Lua 5.4",
+    "pathStrict": true,
     "path": [
       "Server/?",
       "Server/?.lua",
@@ -45,6 +46,7 @@
       "unused-local": "Any",
       "redefined-local": "Any"
     },
+    "disable": ["different-requires"],
     "severity": {
       "redefined-local": "Warning",
       "unused-local": "Warning",
