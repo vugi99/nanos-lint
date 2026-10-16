@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Grouped weekly npm and GitHub Actions upgrades into one Dependabot pull request targeting `dev`.
+- Updated development dependencies via Dependabot: `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser` and `typescript-eslint` from 8.71.1 to 8.71.2 (#80, #83), `@vitest/coverage-v8` and `vitest` from 5.0.3 to 5.0.4 (#81, #84) and `dependency-cruiser` from 18.5.0 to 18.6.0 (#82).
 
 ## [3.5.0] - 2026-10-14
 
