@@ -8,11 +8,11 @@ multi-ecosystem-groups:
   dependencies:
     schedule:
       interval: "weekly"
+    target-branch: "dev"
 
 updates:
   - package-ecosystem: "npm"
     directory: "/"
-    target-branch: "dev"
     patterns: ["*"]
     multi-ecosystem-group: "dependencies"
     ignore:
@@ -23,6 +23,5 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "dev"
     patterns: ["*"]
     multi-ecosystem-group: "dependencies"
