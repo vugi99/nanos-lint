@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Aligned LuaLS `Package.Require` lookup with nanos world's search order using a resolver plugin for current-file-relative imports plus side-specific, shared, package-root, and sibling-package paths; documented the native searchers and cached-result behavior (#79).
+- `nanos-lint init --vendor` now also vendors the `Package.Require` resolver plugin into `.nanos-lint/` and pins `runtime.plugin` to the vendored copy, so editors resolve current-file-relative requires like `nanos-lint check` does. A template that declares its own `runtime.plugin` is left alone (#79, PR #85 review).
+
+### Changed
+
+- Grouped weekly npm and GitHub Actions upgrades into one Dependabot pull request targeting `dev`.
+- Updated development dependencies via Dependabot: `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser` and `typescript-eslint` from 8.71.1 to 8.71.2 (#80, #83), `@vitest/coverage-v8` and `vitest` from 5.0.3 to 5.0.4 (#81, #84) and `dependency-cruiser` from 18.5.0 to 18.6.0 (#82).
+- The bundled configuration anchors `runtime.path` searchers with `Lua.runtime.pathStrict`, so a `Package.Require` name resolves only at the location a searcher names. LuaLS previously matched searchers as URI suffixes and could bind `Package.Require("Deep/Nested.lua")` to `Packages/other/Server/Deep/Nested.lua`, a file nanos world would never load for that require (PR #85 review).
+- The bundled configuration disables LuaLS `different-requires` through `diagnostics.disable`: nanos world documents the package-relative (`Storage/Codec.lua`) and package-qualified (`vconfig/Server/Storage/Codec.lua`) spellings of the same file as equivalent, while LuaLS raises that warning exactly when both spellings resolve to the same file. A workspace that declares its own `diagnostics.disable` list replaces the bundled one and gets the warning back (PR #85 review).
+- The README documents the adjusted defaults next to the search order: `Lua.runtime.pathStrict`, the disabled `different-requires` diagnostic with its opt-out, the restored `Lua.completion.requireSeparator` note, and the vendored plugin that keeps editor resolution in step with `nanos-lint check` (PR #85 review).
+
+### Fixed
+
+- Isolated LuaLS runtime check logs to temporary directories and excluded runtime `log` directories from cached LuaLS copies, resolving flaky concurrent `EIO` errors during parallel Vitest runs.
+- Realm passes treat a `runtime.path` list that matches the bundled defaults by value as managed instead of customized, so workspaces scaffolded by `nanos-lint init` keep the shared-first realm resolution order and no longer report false `param-type-mismatch` diagnostics for `Package.Require("Util.lua")` calls in `Shared/` (PR #85 review).
+- A failed LuaLS check keeps its per-run log directory and names it in the error message, instead of deleting the `service.log` that explains a crash, timeout, or missing diagnostic output; an uncreatable temporary directory now raises an actionable `ERR_LUALS_LOG_DIR` error instead of a raw filesystem failure (PR #85 review).
+- The `Package.Require` live fixtures compare diagnostics against native real paths, so the CI matrix resolves the same relative paths on macOS (symlinked temporary directories), Windows (short `RUNNER~1` names) and Linux instead of only on Linux (PR #85 review).
+
 ## [3.5.0] - 2026-10-14
 
 ### Added

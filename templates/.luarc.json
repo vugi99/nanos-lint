@@ -3,15 +3,18 @@
   "Lua.completion.requireSeparator": "/",
   "runtime": {
     "version": "Lua 5.4",
+    "pathStrict": true,
     "path": [
-      "?",
-      "?.lua",
-      "Shared/?",
-      "Shared/?.lua",
+      "Server/?",
+      "Server/?.lua",
       "Client/?",
       "Client/?.lua",
-      "Server/?",
-      "Server/?.lua"
+      "Shared/?",
+      "Shared/?.lua",
+      "?",
+      "?.lua",
+      "Packages/?",
+      "Packages/?.lua"
     ],
     "special": {
       "Package.Require": "require"
@@ -43,6 +46,7 @@
       "unused-local": "Any",
       "redefined-local": "Any"
     },
+    "disable": ["different-requires"],
     "severity": {
       "redefined-local": "Warning",
       "unused-local": "Warning",

@@ -146,7 +146,7 @@ export function createProgram(options?: CreateProgramOptions): Command {
     .option("-f, --force", "Overwrite existing .luarc.json configuration")
     .option(
       "--vendor",
-      "Vendor annotations.lua into .nanos-lint/ inside workspace for portable standalone editor setup",
+      "Vendor annotations.lua and the Package.Require resolver plugin into .nanos-lint/ for a portable standalone editor setup",
     )
     .option("--annotations <path>", "Path to custom annotations.lua file (requires --vendor)")
     .action(

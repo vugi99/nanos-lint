@@ -228,7 +228,10 @@ async function downloadAndPromoteLuaLS(
       logger.info(
         `[luals] Reusing existing LuaLS ${resolvedVersion} installation from ${existingSourceDir}...`,
       );
-      fs.cpSync(existingSourceDir, tempDir, { recursive: true });
+      fs.cpSync(existingSourceDir, tempDir, {
+        recursive: true,
+        filter: (src) => path.basename(src) !== "log",
+      });
     } else {
       logger.info(`[luals] Downloading LuaLS ${resolvedVersion} from ${url}...`);
 

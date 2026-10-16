@@ -41,7 +41,10 @@ export async function seedCachedLuaLS(baseCacheDir: string, version: string): Pr
 
   fs.rmSync(targetDir, { recursive: true, force: true });
   fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-  fs.cpSync(sourceDir, targetDir, { recursive: true });
+  fs.cpSync(sourceDir, targetDir, {
+    recursive: true,
+    filter: (src) => path.basename(src) !== "log",
+  });
   fs.writeFileSync(path.join(targetDir, ".complete"), version, "utf-8");
 
   return path.join(targetDir, info.binaryRelativePath);
