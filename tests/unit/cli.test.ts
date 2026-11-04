@@ -8,6 +8,7 @@ import * as pathsModule from "../../src/paths.js";
 import * as lualsModule from "../../src/luals.js";
 import * as annotationsModule from "../../src/annotations.js";
 import * as realmsModule from "../../src/realms.js";
+import * as exportTypesModule from "../../src/export-types.js";
 import { logger } from "../../src/logger.js";
 import { getProgressMode, setProgressMode } from "../../src/terminal-progress.js";
 
@@ -938,6 +939,63 @@ describe("cli module flag and command parsing", () => {
         expect(messages).toContain("Target path does not exist: nonexistent_dir_xyz");
       } finally {
         errSpy.mockRestore();
+      }
+    });
+
+    it("passes export-types options to the exporter", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const exportSpy = vi.spyOn(exportTypesModule, "exportTypes").mockResolvedValue({
+        destination: "/tmp/types",
+        manifestPath: "/tmp/types/nanos-types.json",
+        manifest: {
+          schemaVersion: 1,
+          generator: { name: "nanos-lint", version: "3.6.0" },
+          package: { name: "demo", version: "1.0.0" },
+          sourceCommit: null,
+          generatedAt: "2026-01-01T00:00:00.000Z",
+          includeDependencies: false,
+          withNanos: true,
+          files: [
+            {
+              path: "Server/api.d.lua",
+              realm: "server",
+              kind: "definition",
+              source: "Server/api.d.lua",
+            },
+          ],
+        },
+      });
+
+      try {
+        const code = await runCLI([
+          "export-types",
+          "out",
+          "--no-deps",
+          "--with-nanos",
+          "--annotations",
+          "custom.lua",
+          "--config",
+          "config.json",
+          "--force",
+          "--offline",
+        ]);
+        expect(code).toBe(0);
+        expect(exportSpy).toHaveBeenCalledWith({
+          root: process.cwd(),
+          destination: "out",
+          force: true,
+          dependencies: false,
+          withNanos: true,
+          annotationsPath: "custom.lua",
+          configPath: "config.json",
+          offline: true,
+        });
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining("[export-types] Exported 1 definition file(s) to: /tmp/types"),
+        );
+      } finally {
+        exportSpy.mockRestore();
+        logSpy.mockRestore();
       }
     });
   });

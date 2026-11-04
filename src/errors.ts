@@ -26,3 +26,7 @@ export class AnnotationsError extends NanosLintError {
 export class CacheError extends NanosLintError {
   public override readonly name: string = "CacheError";
 }
+
+export class ExportTypesError extends NanosLintError {
+  public override readonly name: string = "ExportTypesError";
+}
