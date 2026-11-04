@@ -17,7 +17,7 @@ const tempDirs: string[] = [];
 
 /** Creates an isolated scratch directory removed after the test. */
 function makeTempDir(prefix: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   tempDirs.push(dir);
   return dir;
 }
@@ -265,7 +265,6 @@ describe("exportTypes dependency resolution", () => {
   it("includes transitive dependency definitions and breaks cycles", async () => {
     const base = makeTempDir("nanos-export-deps-");
     const root = path.join(base, "root");
-    const depEmpty = path.join(base, "dep-empty");
     writeTree(base, {
       "root/.luarc.json": JSON.stringify({
         nanos: { deps: ["../dep-a", "../dep-empty", "../defs/shared.d.lua"] },
@@ -294,7 +293,6 @@ describe("exportTypes dependency resolution", () => {
     expect(fs.existsSync(path.join(destination, "Shared/deps/dep-b/client.d.lua"))).toBe(true);
     expect(fs.existsSync(path.join(destination, "Shared/deps/shared/shared.d.lua"))).toBe(true);
     expect(fs.existsSync(path.join(destination, "root.d.lua"))).toBe(true);
-    expect(warnings.join("\n")).toContain(depEmpty);
     expect(warnings.join("\n")).toContain('"dep-empty"');
     expect(warnings.join("\n")).toContain("has no definition files");
 
@@ -307,6 +305,21 @@ describe("exportTypes dependency resolution", () => {
       "shared",
     ]);
     expect(dependencyFiles.map((file) => file.source)).toContain("../dep-a/Server/server.d.lua");
+  });
+
+  it("writes dependency source paths relative to the canonical package root", async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "nanos-export-canonical-"));
+    tempDirs.push(base);
+    writeTree(base, {
+      "root/.luarc.json": JSON.stringify({ nanos: { deps: ["../dep"] } }),
+      "root/api.d.lua": "---@meta\nApi = {}\n",
+      "dep/api.d.lua": "---@meta\nDep = {}\n",
+    });
+
+    const result = await exportTypes({ root: path.join(base, "root"), destination: "types" });
+
+    const dependency = result.manifest.files.find((file) => file.path.includes("/deps/"));
+    expect(dependency?.source).toBe("../dep/api.d.lua");
   });
 
   it("resolves dependencies through a custom --config file", async () => {

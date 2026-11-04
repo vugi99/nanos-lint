@@ -5,6 +5,7 @@ import { resolveAnnotations } from "./annotations.js";
 import { deriveRealmAnnotationFiles } from "./annotations-realms.js";
 import { getPackageRoot, loadUserConfig } from "./config.js";
 import { resolvePackageDependencies } from "./deps.js";
+import { getCanonicalPath } from "./target-resolver.js";
 import {
   planDependencyDefinitions,
   planOwnDefinitions,
@@ -327,7 +328,7 @@ function assertNoOutputCollisions(files: PlannedTypeFile[]): void {
  * rename. A manifest records package metadata, the source commit, and every source file.
  */
 export async function exportTypes(options: ExportTypesOptions = {}): Promise<ExportTypesResult> {
-  const root = path.resolve(options.root ?? process.cwd());
+  const root = getCanonicalPath(path.resolve(options.root ?? process.cwd()));
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
     throw new ExportTypesError(
       `Package root not found or not a directory: ${root}`,

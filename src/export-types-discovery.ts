@@ -285,10 +285,40 @@ function dependencyDisplayName(packagePath: string, isFile: boolean): string {
   return isFile ? base.replace(/\.d\.lua$/i, "").replace(/\.lua$/i, "") : base;
 }
 
-/** Reduces a package name to a portable directory name. */
+/**
+ * Reduces a package name to a portable directory name. Scanning is linear on purpose:
+ * package names are untrusted input, and a regular expression over repeated '-' runs is
+ * both slow and flagged by CodeQL.
+ */
 function sanitizeNamespace(name: string): string {
-  const cleaned = name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
-  return cleaned || "dependency";
+  const characters: string[] = [];
+  let previousWasDash = false;
+  for (const character of name) {
+    const code = character.charCodeAt(0);
+    const allowed =
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      character === "." ||
+      character === "_" ||
+      character === "-";
+    if (allowed) {
+      characters.push(character);
+      previousWasDash = character === "-";
+    } else if (!previousWasDash) {
+      characters.push("-");
+      previousWasDash = true;
+    }
+  }
+  let start = 0;
+  let end = characters.length;
+  while (start < end && (characters[start] === "-" || characters[start] === ".")) {
+    start += 1;
+  }
+  while (end > start && (characters[end - 1] === "-" || characters[end - 1] === ".")) {
+    end -= 1;
+  }
+  return characters.slice(start, end).join("") || "dependency";
 }
 
 /** Allocates a unique, case-insensitive namespace for a dependency package. */

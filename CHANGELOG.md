@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated development dependencies via Dependabot: `@types/node` from 26.6.5 to 26.6.6, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser` and `typescript-eslint` from 8.71.2 to 8.72.1, `@vitest/coverage-v8` and `vitest` from 5.0.4 to 5.0.5, `dependency-cruiser` from 18.6.0 to 18.7.0, `eslint` from 10.12.0 to 10.14.0, `glob` from 13.0.6 to 14.0.3 (major), and `tsdown` from 0.23.1 to 0.23.4 (#87, #88, #89).
 
+### Fixed
+
+- `export-types` resolves the package root through its canonical path, so manifest source paths and bundle destinations stay correct when the workspace is reached through a symlink or a Windows short path (#90).
+- Replaced `export-types` namespace sanitization with a linear scan instead of a regular expression, avoiding polynomial behavior on untrusted package names (CodeQL).
+
 ## [3.6.0] - 2026-10-16
 
 ### Added

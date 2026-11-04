@@ -5,6 +5,7 @@ import path from "node:path";
 import { getPackageRoot, loadUserConfig } from "../../src/config.js";
 import { exportTypes } from "../../src/export-types.js";
 import { planRealmCheck, runRealmAwareCheck } from "../../src/realms.js";
+import { getCanonicalPath } from "../../src/target-resolver.js";
 import { fileUriToPath } from "../../src/types.js";
 import { getSharedAnnotations, isLiveTestsEnabled } from "../helpers/live.js";
 
@@ -18,7 +19,9 @@ describe.skipIf(!isLiveTestsEnabled())("export-types integration (#90)", () => {
   }, 120000);
 
   it("type-checks a consumer against the exported tree after the dependency source is removed", async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nanos-export-types-"));
+    const tempRoot = getCanonicalPath(
+      fs.mkdtempSync(path.join(os.tmpdir(), "nanos-export-types-")),
+    );
     const packageRoot = path.join(tempRoot, "package");
     const consumerRoot = path.join(tempRoot, "consumer");
     try {
@@ -59,7 +62,7 @@ describe.skipIf(!isLiveTestsEnabled())("export-types integration (#90)", () => {
         const diagnostics: string[] = [];
         for (const [uri, entries] of Object.entries(result.diagnostics)) {
           const relative = path
-            .relative(consumerRoot, path.resolve(fileUriToPath(uri)))
+            .relative(getCanonicalPath(consumerRoot), path.resolve(fileUriToPath(uri)))
             .replace(/\\/g, "/");
           for (const entry of entries) {
             diagnostics.push(`${relative}:${entry.code}`);
