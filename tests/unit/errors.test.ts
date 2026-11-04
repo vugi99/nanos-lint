@@ -8,6 +8,7 @@ import {
   LuaLSError,
   AnnotationsError,
   CacheError,
+  ExportTypesError,
   loadConfigFile,
   resolveAnnotations,
   resolveLuaLSVersion,
@@ -50,6 +51,11 @@ describe("Typed Error Hierarchy", () => {
     expect(cacheErr).toBeInstanceOf(NanosLintError);
     expect(cacheErr).toBeInstanceOf(CacheError);
     expect(cacheErr.name).toBe("CacheError");
+
+    const exportErr = new ExportTypesError("Exists", "ERR_EXPORT_TYPES_EXISTS");
+    expect(exportErr).toBeInstanceOf(NanosLintError);
+    expect(exportErr).toBeInstanceOf(ExportTypesError);
+    expect(exportErr.name).toBe("ExportTypesError");
   });
 
   describe("Call site typed errors", () => {

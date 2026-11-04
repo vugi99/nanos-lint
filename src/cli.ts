@@ -5,6 +5,7 @@ import { Command, CommanderError, Option } from "commander";
 import { initWorkspace, getPackageRoot } from "./config.js";
 import { collectDeps } from "./deps.js";
 import { resolveAnnotations, readAnnotationsMetadata, copyAnnotations } from "./annotations.js";
+import { exportTypes } from "./export-types.js";
 import { resolveLuaLSBinary, DEFAULT_LUALS_VERSION } from "./luals.js";
 import { cleanCache, systemPaths } from "./paths.js";
 import { getCacheStatus, formatCacheStatusPretty } from "./cache-status.js";
@@ -204,6 +205,48 @@ export function createProgram(options?: CreateProgramOptions): Command {
     );
 
   program
+    .command("export-types [destination]")
+    .description(
+      "Bundle package type definitions (*.d.lua and ---@meta files) into a portable directory for downstream type checking",
+    )
+    .option("--no-deps", "Do not include transitive dependency definition files")
+    .option("--with-nanos", "Include the resolved nanos world annotations in the bundle")
+    .option(
+      "--annotations <path>",
+      "Path to custom annotations.lua source file (requires --with-nanos)",
+    )
+    .option("--config <path>", "Path to custom .luarc.json used to resolve dependencies")
+    .option("-f, --force", "Overwrite an existing non-empty destination")
+    .action(
+      async (
+        destination: string | undefined,
+        opts: {
+          deps?: boolean;
+          withNanos?: boolean;
+          annotations?: string;
+          config?: string;
+          force?: boolean;
+        },
+        cmd: Command,
+      ) => {
+        const result = await exportTypes({
+          root: process.cwd(),
+          destination,
+          force: opts.force,
+          dependencies: opts.deps !== false,
+          withNanos: opts.withNanos,
+          annotationsPath: opts.annotations,
+          configPath: opts.config,
+          offline: cmd.optsWithGlobals().offline,
+        });
+        writeOutput(
+          `[export-types] Exported ${result.manifest.files.length} definition file(s) to: ${result.destination}`,
+        );
+        setExitCode(0);
+      },
+    );
+
+  program
     .command("warmup")
     .alias("download")
     .description("Pre-fetch and cache both LuaLS binary and annotations for offline execution")
@@ -333,6 +376,7 @@ Examples:
   $ npx nanos-lint check Shared/ Server/ --realm server
   $ npx nanos-lint init
   $ npx nanos-lint copy-annotations
+  $ npx nanos-lint export-types ./types
   $ npx nanos-lint clean-cache
 `,
   );

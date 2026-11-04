@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `nanos-lint export-types [destination]` and the programmatic `exportTypes()` API to publish a package's public type surface as a portable directory for downstream CI (#90). The bundle collects `**/*.d.lua` and `---@meta` definition files, includes transitive `nanos.deps` definitions with cycle detection unless `--no-deps` is passed, preserves `Server/`, `Client/` and `Shared/` realm isolation (flattening nested definition paths so ignored directories cannot hide them), and writes a `nanos-types.json` manifest with package name/version, source commit, generation timestamp, and every source file.
+- Added `--with-nanos` to `export-types` for embedding the resolved nanos world annotations (full for shared-only packages, realm-derived for realm-aware ones), with `--annotations` and `--offline` support.
+- `export-types` refuses to replace a non-empty destination without `-f, --force`, stages the tree before renaming it into place so failed writes leave no partial bundle, and warns instead of failing for missing dependencies or dependencies without definition files.
+
 ## [3.6.0] - 2026-10-16
 
 ### Added
