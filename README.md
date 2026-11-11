@@ -236,6 +236,7 @@ COMMANDS:
   check [paths...]         Check workspace files or directories (default)
   init [path]              Scaffold a .luarc.json configuration in the workspace (supports --vendor, --force)
   copy-annotations [dest]  Copy cached annotations.lua definitions into a target file or directory (alias: export-annotations; targets not ending in .lua are treated as directories)
+  export-types [dest]      Bundle package type definitions into a portable directory for downstream type checking
   warmup, download         Pre-fetch and cache both LuaLS binary and annotations for offline execution
   cache status, cache info Show cache status, installed versions, and disk usage (supports --json)
   cache clean              Clear the nanos-lint cache directory
@@ -254,7 +255,7 @@ OPTIONS:
                            debug adds diagnostic tracing
   --checklevel=<level>     Minimum diagnostic level: Error, Warning, Information, Hint (default: Warning)
   --config=<path>          Path to custom .luarc.json configuration file
-  --annotations=<path>     Path to custom annotations.lua file (applies to check, init --vendor, and copy-annotations)
+  --annotations=<path>     Path to custom annotations.lua file (applies to check, init --vendor, copy-annotations, and export-types --with-nanos)
   --format=<format>        Output format: pretty, json, github (default: pretty)
   --github                 Output in GitHub Actions format (shortcut for --format=github)
   --luals-version=<ver>    Version of LuaLS to use (default: latest, falling back to 3.19.1 when offline)
@@ -265,9 +266,11 @@ OPTIONS:
   --realm <realm>          Execution realm to check: all, client, server, shared (default: all)
   --offline                Use local dependencies only; never access the network
   --no-progress            Disable the interactive download, extraction and realm derivation progress display
+  --no-deps                (export-types only) Do not include transitive dependency definition files
+  --with-nanos             (export-types only) Include the resolved nanos world annotations
   -t, --template <path>    (init command only) Use a custom JSONC scaffold template
   --vendor                 (init command only) Vendor annotations.lua and the resolver plugin into .nanos-lint/
-  -f, --force              (init and copy-annotations only) Overwrite existing files
+  -f, --force              (init, copy-annotations, and export-types) Overwrite existing files or a non-empty directory
 ```
 
 ### Diagnostic Baselines
@@ -457,6 +460,63 @@ When packages depend on other packages (e.g. located in `Server/Packages/` or ex
 - **Transitive Dependencies & Cycle Detection**: Dependencies are traversed recursively. If a dependency defines its own `nanos.deps` in `.luarc.json`, those dependencies are loaded automatically. Circular dependencies are detected and visited only once.
 - **Realm Partitioning**: Dependency directories are inspected for realm conventions (`Server/`, `Client/`, `Shared/`). Server passes only include `Server/` and `Shared/` folders of dependencies; client passes only include `Client/` and `Shared/` folders. Single definition `.lua` files and non-partitioned dependency directories are included in all passes.
 - **Resilience**: If a declared dependency path does not exist, `nanos-lint` emits a warning and continues without failing the lint pass.
+
+### Exporting Portable Types (`export-types`)
+
+Downstream packages normally point `nanos.deps` at sibling source directories. In CI only the
+consumer repository is checked out, so those paths are missing and every exported global degrades
+to `undefined-global` or `any`. `export-types` publishes a package's type surface once, so consumers
+can type-check against it without the dependency source:
+
+```bash
+# Bundle ./Server, ./Client, ./Shared and root-level definitions into ./types
+npx nanos-lint export-types
+
+# Or publish under a vendor directory
+npx nanos-lint export-types ./vendor/dep-types
+```
+
+The bundle collects `**/*.d.lua` files and `*.lua` files whose first non-comment directive is
+`---@meta`. Ordinary implementation files are not copied. Transitive dependencies declared through
+`nanos.deps` are included by default, with the same cycle detection as `check`; pass `--no-deps` to
+bundle only the package itself. Dependencies without definition files produce a warning naming the
+dependency, and missing dependency paths warn and continue.
+
+Realm layout is preserved as top-level `Server/`, `Client/` and `Shared/` folders: a dependency
+definition under `Server/` is not visible in a consumer's client realm pass, while `Shared/` and
+root-level definitions are visible everywhere. Nested definition paths are flattened with `__`
+(for example `src/server/combat.d.lua` becomes `Server/src__server__combat.d.lua`) so a definition
+never lands in a directory such as `meta` that downstream configurations ignore. Root-level
+definitions are emitted as shared files at the bundle root.
+
+`--with-nanos` also embeds the resolved nanos world annotations: a single root
+`annotations.d.lua` for a shared-only package, or realm-derived `Server/annotations.d.lua` and
+`Client/annotations.d.lua` files for a realm-aware one. It is off by default because every
+downstream `nanos-lint` run already resolves the annotations. `--annotations <path>` selects a
+custom source and requires `--with-nanos`; `--offline` prevents a network lookup.
+
+The destination defaults to `./types`. A non-empty destination requires `-f, --force`, and the tree
+is staged beside the destination and renamed into place, so an interrupted export never leaves a
+partially populated bundle. Every bundle also contains `nanos-types.json` with the package name and
+version, the source Git commit (when available), the generation timestamp, and the source path,
+realm and kind of every bundled file.
+
+Consume a published bundle like any other dependency:
+
+```json
+{
+  "nanos": {
+    "deps": ["vendor/dep-types"]
+  }
+}
+```
+
+```bash
+npx nanos-lint check . --dep vendor/dep-types
+```
+
+Cross-package `Package.Require("Packages/...")` calls still cannot be resolved from definition
+files; declare cross-package public APIs as `Package.Export` globals in the type contract instead.
 
 ### `Package.Require` File Resolution
 

@@ -102,6 +102,51 @@ describe.skipIf(!isLiveTestsEnabled())("CLI entrypoint execution regression test
     }
   });
 
+  it("exports package types through dist/cli.js and refuses silent overwrites (#90)", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nanos-export-types-cli-"));
+    try {
+      fs.mkdirSync(path.join(tempDir, "Server"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tempDir, "package.json"),
+        JSON.stringify({ name: "cli-export-fixture", version: "2.0.0" }),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(tempDir, "Server", "api.d.lua"),
+        "---@meta\n---@class Api\nApi = {}\n",
+        "utf-8",
+      );
+
+      const { stdout } = await execFileAsync(process.execPath, [distCli, "export-types", "types"], {
+        cwd: tempDir,
+      });
+      expect(stdout).toContain("[export-types] Exported 1 definition file(s) to:");
+      expect(fs.existsSync(path.join(tempDir, "types", "Server", "api.d.lua"))).toBe(true);
+      const manifest = JSON.parse(
+        fs.readFileSync(path.join(tempDir, "types", "nanos-types.json"), "utf-8"),
+      ) as { package?: { name?: string; version?: string } };
+      expect(manifest.package).toEqual({ name: "cli-export-fixture", version: "2.0.0" });
+
+      try {
+        await execFileAsync(process.execPath, [distCli, "export-types", "types"], {
+          cwd: tempDir,
+        });
+        expect.fail("Expected export-types to refuse overwriting without --force");
+      } catch (err: unknown) {
+        const execErr = err as { code?: number; stderr?: string };
+        expect(execErr.code).toBe(1);
+        expect(execErr.stderr).toContain("already exists and is not empty");
+        expect(execErr.stderr).toContain("--force");
+      }
+
+      await execFileAsync(process.execPath, [distCli, "export-types", "types", "--force"], {
+        cwd: tempDir,
+      });
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("executes dist/cli.js check tests/pass directly and exits with code 0", async () => {
     const { stdout } = await execFileAsync(process.execPath, [
       distCli,
