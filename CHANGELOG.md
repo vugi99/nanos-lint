@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-11-11
+
 ### Added
 
 - Added `nanos-lint export-types [destination]` and the programmatic `exportTypes()` API to publish a package's public type surface as a portable directory for downstream CI (#90). The bundle collects `**/*.d.lua` and `---@meta` definition files, includes transitive `nanos.deps` definitions with cycle detection unless `--no-deps` is passed, preserves `Server/`, `Client/` and `Shared/` realm isolation (flattening nested definition paths so ignored directories cannot hide them), and writes a `nanos-types.json` manifest with package name/version, source commit, generation timestamp, and every source file.
@@ -15,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated development dependencies via Dependabot: `@types/node` from 26.6.5 to 26.6.6, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser` and `typescript-eslint` from 8.71.2 to 8.72.1, `@vitest/coverage-v8` and `vitest` from 5.0.4 to 5.0.5, `dependency-cruiser` from 18.6.0 to 18.7.0, `eslint` from 10.12.0 to 10.14.0, `glob` from 13.0.6 to 14.0.3 (major), and `tsdown` from 0.23.1 to 0.23.4 (#87, #88, #89).
+- Updated development and workflow dependencies via Dependabot: `@types/node` from 26.6.5 to 26.6.6, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser` and `typescript-eslint` from 8.71.2 to 8.72.1, `@vitest/coverage-v8` and `vitest` from 5.0.4 to 5.1.0, `commander` from 15.0.0 to 15.1.0, `dependency-cruiser` from 18.6.0 to 18.7.2, `eslint` from 10.12.0 to 10.14.0, `glob` from 13.0.6 to 14.0.4 (major), `tsdown` from 0.23.1 to 0.23.7, and GitHub Action `softprops/action-gh-release` from 3.0.3 to 3.0.4 (#87, #88, #89, #92).
 
 ### Fixed
 
